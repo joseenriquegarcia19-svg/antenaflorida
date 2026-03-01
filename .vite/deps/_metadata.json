@@ -1,0 +1,187 @@
+{
+  "hash": "cf99c3f7",
+  "configHash": "30a0473d",
+  "lockfileHash": "96e62c49",
+  "browserHash": "9641a3c3",
+  "optimized": {
+    "react": {
+      "src": "../../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "787a9b74",
+      "needsInterop": true
+    },
+    "react-dom": {
+      "src": "../../../node_modules/react-dom/index.js",
+      "file": "react-dom.js",
+      "fileHash": "b63fadb5",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "ca5ca67b",
+      "needsInterop": true
+    },
+    "react/jsx-runtime": {
+      "src": "../../../node_modules/react/jsx-runtime.js",
+      "file": "react_jsx-runtime.js",
+      "fileHash": "dcde0db3",
+      "needsInterop": true
+    },
+    "@emoji-mart/react": {
+      "src": "../../../node_modules/@emoji-mart/react/dist/module.js",
+      "file": "@emoji-mart_react.js",
+      "fileHash": "cf5b3ee1",
+      "needsInterop": false
+    },
+    "@supabase/supabase-js": {
+      "src": "../../node_modules/@supabase/supabase-js/dist/index.mjs",
+      "file": "@supabase_supabase-js.js",
+      "fileHash": "74b874e3",
+      "needsInterop": false
+    },
+    "@tanstack/react-query": {
+      "src": "../../../node_modules/@tanstack/react-query/build/modern/index.js",
+      "file": "@tanstack_react-query.js",
+      "fileHash": "77f53abe",
+      "needsInterop": false
+    },
+    "@vercel/analytics/react": {
+      "src": "../../node_modules/@vercel/analytics/dist/react/index.mjs",
+      "file": "@vercel_analytics_react.js",
+      "fileHash": "f3f09217",
+      "needsInterop": false
+    },
+    "clsx": {
+      "src": "../../node_modules/clsx/dist/clsx.mjs",
+      "file": "clsx.js",
+      "fileHash": "d628f1ab",
+      "needsInterop": false
+    },
+    "date-fns": {
+      "src": "../../node_modules/date-fns/index.js",
+      "file": "date-fns.js",
+      "fileHash": "a4920296",
+      "needsInterop": false
+    },
+    "date-fns/locale": {
+      "src": "../../node_modules/date-fns/locale.js",
+      "file": "date-fns_locale.js",
+      "fileHash": "f3ba46b4",
+      "needsInterop": false
+    },
+    "embla-carousel-autoplay": {
+      "src": "../../../node_modules/embla-carousel-autoplay/esm/embla-carousel-autoplay.esm.js",
+      "file": "embla-carousel-autoplay.js",
+      "fileHash": "fe3f5779",
+      "needsInterop": false
+    },
+    "embla-carousel-react": {
+      "src": "../../../node_modules/embla-carousel-react/esm/embla-carousel-react.esm.js",
+      "file": "embla-carousel-react.js",
+      "fileHash": "a7e9d34a",
+      "needsInterop": false
+    },
+    "html2canvas": {
+      "src": "../../../node_modules/html2canvas/dist/html2canvas.esm.js",
+      "file": "html2canvas.js",
+      "fileHash": "0905f10f",
+      "needsInterop": false
+    },
+    "jspdf": {
+      "src": "../../node_modules/jspdf/dist/jspdf.es.min.js",
+      "file": "jspdf.js",
+      "fileHash": "ab58bb2c",
+      "needsInterop": false
+    },
+    "jspdf-autotable": {
+      "src": "../../node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs",
+      "file": "jspdf-autotable.js",
+      "fileHash": "bf71d8da",
+      "needsInterop": false
+    },
+    "lucide-react": {
+      "src": "../../node_modules/lucide-react/dist/esm/lucide-react.js",
+      "file": "lucide-react.js",
+      "fileHash": "08ecdc74",
+      "needsInterop": false
+    },
+    "qrcode.react": {
+      "src": "../../../node_modules/qrcode.react/lib/esm/index.js",
+      "file": "qrcode__react.js",
+      "fileHash": "29940959",
+      "needsInterop": false
+    },
+    "react-dom/client": {
+      "src": "../../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "09d61616",
+      "needsInterop": true
+    },
+    "react-helmet-async": {
+      "src": "../../../node_modules/react-helmet-async/lib/index.esm.js",
+      "file": "react-helmet-async.js",
+      "fileHash": "b0e0447c",
+      "needsInterop": false
+    },
+    "react-hook-form": {
+      "src": "../../node_modules/react-hook-form/dist/index.esm.mjs",
+      "file": "react-hook-form.js",
+      "fileHash": "2ebc9177",
+      "needsInterop": false
+    },
+    "react-quill": {
+      "src": "../../../node_modules/react-quill/lib/index.js",
+      "file": "react-quill.js",
+      "fileHash": "180ff8f0",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.mjs",
+      "file": "react-router-dom.js",
+      "fileHash": "f4d99738",
+      "needsInterop": false
+    },
+    "recharts": {
+      "src": "../../node_modules/recharts/es6/index.js",
+      "file": "recharts.js",
+      "fileHash": "ef609521",
+      "needsInterop": false
+    },
+    "tailwind-merge": {
+      "src": "../../node_modules/tailwind-merge/dist/bundle-mjs.mjs",
+      "file": "tailwind-merge.js",
+      "fileHash": "12fca793",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "purify.es-X4TDWS4Y": {
+      "file": "purify__es-X4TDWS4Y.js"
+    },
+    "index.es-HSLFB3HW": {
+      "file": "index__es-HSLFB3HW.js"
+    },
+    "chunk-LUJQACJ3": {
+      "file": "chunk-LUJQACJ3.js"
+    },
+    "chunk-SITVF2AJ": {
+      "file": "chunk-SITVF2AJ.js"
+    },
+    "chunk-SVHLZWBA": {
+      "file": "chunk-SVHLZWBA.js"
+    },
+    "chunk-QCHDQQJ2": {
+      "file": "chunk-QCHDQQJ2.js"
+    },
+    "chunk-BQK4GRLU": {
+      "file": "chunk-BQK4GRLU.js"
+    },
+    "chunk-KDVGFZWC": {
+      "file": "chunk-KDVGFZWC.js"
+    },
+    "chunk-WOOG5QLI": {
+      "file": "chunk-WOOG5QLI.js"
+    }
+  }
+}
