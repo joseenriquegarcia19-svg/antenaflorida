@@ -1255,7 +1255,7 @@ async function fetchNewsFn({ pageParam = 0, searchTerm, categoryFilter }: { page
 
   let query = supabase
     .from('news')
-    .select('id, title, category, image_url, created_at, author_id, views, shares, featured, tags, summary, sources, media_config, sidebar_content, parent_id, profiles!news_author_id_fkey(full_name), news_likes(count), news_comments(count), reactions', { count: 'exact' });
+    .select('id, slug, title, category, image_url, created_at, author_id, views, shares, featured, tags, summary, sources, media_config, sidebar_content, parent_id, profiles!news_author_id_fkey(full_name), news_likes(count), news_comments(count), reactions', { count: 'exact' });
 
   // Filter by search term
   if (searchTerm) {
@@ -2365,7 +2365,7 @@ export default function ManageNews() {
                   </div>
                   <div className="flex items-center gap-2">
                     <a 
-                      href={`/noticias/${item.id}`} 
+                      href={`/noticias/${item.slug || item.id}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="p-2 text-slate-400 dark:text-white/60 hover:text-primary transition-colors"
