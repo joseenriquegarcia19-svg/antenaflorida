@@ -143,6 +143,12 @@ export const CategoryQuickAccess: React.FC = () => {
               <span className="size-2 bg-primary rounded-full" />
               Explora Secciones
             </h3>
+            <Link 
+              to="/noticias/secciones" 
+              className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+            >
+              Ver todas <ChevronRight size={14} className="hidden sm:block" />
+            </Link>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">

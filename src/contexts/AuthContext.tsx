@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseActive } from '@/lib/supabase';
 
 export interface UserPermissions {
   news?: boolean;
@@ -47,7 +47,7 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<'admin' | 'editor' | 'user' | null>(null);
   const [permissions, setPermissions] = useState<UserPermissions>({});
@@ -88,6 +88,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+
+    if (!isSupabaseActive) {
+      setSession(null);
+      setRole(null);
+      setAuthLoading(false);
+      return;
+    }
 
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (!isMounted) return;
@@ -206,25 +213,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [session]);
 
-  const loading = authLoading || (!!session && role === null);
-  const value = useMemo<AuthState>(() => ({ 
-    session, 
-    role, 
-    permissions, 
-    isSuperAdmin, 
+  const value = useMemo(() => ({
+    session,
+    role,
+    permissions,
+    isSuperAdmin,
     user: userProfile,
-    loading,
+    loading: authLoading,
     refreshProfile
-  }), [session, role, permissions, isSuperAdmin, userProfile, loading, refreshProfile]);
+  }), [session, role, permissions, isSuperAdmin, userProfile, authLoading, refreshProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+};
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAuth() {
+export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) {
     throw new Error('useAuth must be used within AuthProvider');
   }
   return ctx;
-}
+};

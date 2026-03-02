@@ -50,7 +50,6 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
             href: `/noticias/seccion/${cat.toLowerCase()}`,
             label: cat
           })),
-          { href: '/noticias/vuelos', label: '✈ Estado de Vuelos MIA' },
         ]
       },
       { 
@@ -91,7 +90,7 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
     <>
       {/* Desktop Navigation */}
       <nav 
-        className="hidden xl:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-6 lg:gap-8 h-full"
+        className="hidden xl:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-6 lg:gap-8 h-full font-display"
         aria-label="Navegación principal"
       >
         {navItems.map((item) => {
@@ -128,17 +127,17 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
                   </Link>
                 ) : (
                   <button 
-                    className={`text-sm font-bold uppercase tracking-widest transition-colors py-2 flex items-center gap-1 relative group/link ${
+                    className={`text-[15px] font-extrabold tracking-tight transition-all py-2.5 flex items-center gap-1.5 relative group/link ${
                       isItemActive 
-                        ? 'text-primary-orange' 
-                        : 'text-slate-900 dark:text-white hover:text-primary-orange dark:hover:text-primary-orange'
+                        ? 'text-primary-orange scale-105' 
+                        : 'text-slate-900/80 dark:text-white/80 hover:text-primary-orange dark:hover:text-primary-orange hover:scale-105'
                     }`}
                     aria-haspopup="true"
                     {...{ 'aria-expanded': openSubmenu === item.label ? 'true' : 'false' }}
                   >
                     {item.label}
-                    <svg className="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg className="w-3.5 h-3.5 transition-transform group-hover:rotate-180 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
                 )}
@@ -151,7 +150,7 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
                           <Link
                             key={subItem.href}
                             to={subItem.href}
-                            className={`block px-4 py-3 text-sm font-bold transition-colors ${
+                            className={`block px-4 py-3 text-[14px] font-bold tracking-tight transition-colors ${
                               isSubActive 
                                 ? 'bg-slate-50 dark:bg-white/10 text-primary-orange'
                                 : 'text-slate-700 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-primary-orange'
@@ -174,11 +173,11 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
           return (
               <Link
               key={item.label}
-              className={`text-sm font-bold uppercase tracking-widest transition-colors py-2 flex-shrink-0 relative group/link flex items-center gap-2 ${
-                item.isLive ? 'text-primary' : 
+              className={`text-[15px] font-extrabold tracking-tight transition-all py-2.5 flex-shrink-0 relative group/link flex items-center gap-2 ${
+                item.isLive ? 'text-primary shadow-sm px-2 bg-primary/10 rounded-lg' : 
                 (isLinkActive 
-                  ? 'text-primary-orange' 
-                  : 'text-slate-900 dark:text-white hover:text-primary-orange dark:hover:text-primary-orange')
+                  ? 'text-primary-orange scale-105' 
+                  : 'text-slate-900/80 dark:text-white/80 hover:text-primary-orange dark:hover:text-primary-orange hover:scale-105')
               }`}
               to={item.href}
             >
@@ -205,7 +204,7 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
             className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute top-0 right-0 h-full w-[85%] max-w-sm bg-white dark:bg-card-dark border-l border-slate-200 dark:border-white/10 p-6 flex flex-col gap-8 shadow-2xl overflow-y-auto">
+          <div className="absolute top-0 right-0 h-full w-[85%] max-w-sm bg-white dark:bg-card-dark border-l border-slate-200 dark:border-white/10 p-6 flex flex-col gap-8 shadow-2xl overflow-y-auto font-display">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="size-10 rounded-lg overflow-hidden bg-transparent flex items-center justify-center">
@@ -222,7 +221,7 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
                     <img src={getValidImageUrl(config?.logo_url, 'logo')} alt={config?.site_name || 'Logo'} className="w-full h-full object-contain" />
                   )}
                 </div>
-                <div className="text-lg font-black tracking-tighter uppercase italic text-slate-900 dark:text-white">
+                <div className="text-lg font-extrabold tracking-tight uppercase text-slate-900 dark:text-white" >
                   {config?.site_name ? (
                     <>
                       {config.site_name.split(' ').map((word, i) => (
@@ -257,12 +256,12 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
                           <Link
                             to={item.href}
                             onClick={() => setMobileOpen(false)}
-                            className="flex-1 flex items-center justify-between px-5 py-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white font-bold active:scale-[0.98] transition-all hover:bg-slate-100 dark:hover:bg-white/10"
+                            className="flex-1 flex items-center justify-between px-5 py-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white font-extrabold tracking-tight active:scale-[0.98] transition-all hover:bg-slate-100 dark:hover:bg-white/10"
                           >
                             <span>{item.label}</span>
                           </Link>
                         ) : (
-                          <span className="flex-1 flex items-center px-5 py-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white font-bold">
+                          <span className="flex-1 flex items-center px-5 py-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white font-extrabold tracking-tight">
                             {item.label}
                           </span>
                         )}
@@ -305,7 +304,7 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
                     key={item.label}
                     to={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center justify-between w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white font-bold active:scale-[0.98] transition-all"
+                    className="flex items-center justify-between w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white font-extrabold tracking-tight active:scale-[0.98] transition-all"
                   >
                     <span className="flex items-center gap-3">
                       {item.isLive && <span className="inline-flex size-2.5 rounded-full bg-primary animate-pulse" />}

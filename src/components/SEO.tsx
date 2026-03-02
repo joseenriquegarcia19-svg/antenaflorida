@@ -73,7 +73,7 @@ export const SEO: React.FC<SEOProps> = ({
       {seoKeywords && <meta name="keywords" content={seoKeywords} />}
       <meta name="robots" content={robots} />
       <link rel="canonical" href={seoUrl} />
-      <link rel="icon" href={favicon || config?.logo_url || '/logo.jpg'} />
+      {favicon && <link rel="icon" href={favicon} />}
 
       {/* Structured Data (JSON-LD) */}
       {schema && (

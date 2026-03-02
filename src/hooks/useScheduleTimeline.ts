@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { format, addDays } from 'date-fns';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
@@ -98,7 +98,7 @@ export function useScheduleTimeline() {
   }
 
   // Helper to build timeline for a specific date
-  const getDayTimeline = (targetDate: Date, allShows: Show[]) => {
+  const getDayTimeline = useCallback((targetDate: Date, allShows: Show[]) => {
     const dateStr = targetDate.toISOString().split('T')[0];
     const dayIndex = targetDate.getDay();
     const prevDate = new Date(targetDate);
@@ -224,7 +224,7 @@ export function useScheduleTimeline() {
     }
 
     return timeline;
-  };
+  }, [config?.site_name, config?.slogan, config?.logo_url]);
 
   const timelineData = useMemo(() => {
     const today = now;

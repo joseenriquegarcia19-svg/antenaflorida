@@ -46,7 +46,7 @@ export const Logo: React.FC<LogoProps> = ({ className = "w-full h-full object-co
     <img 
       src={getValidImageUrl(config?.logo_url, 'logo')} 
       alt={config?.site_name || 'Logo'} 
-      className={className}
+      className={`${className} bg-transparent`}
       width={128}
       height={128}
     />

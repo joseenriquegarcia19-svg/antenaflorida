@@ -27,6 +27,7 @@ export interface PlayerContextType {
   togglePlay: () => void;
   playTrack: (track: Track, indexInQueue?: number) => void;
   setVolume: (volume: number) => void;
+  setVolumeImmediate: (volume: number) => void;
   toggleRepeat: () => void;
   setIsPlayerCollapsed: (collapsed: boolean) => void;
   setIsPlaying: (playing: boolean) => void;

@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { supabase } from '../lib/supabase';
+import { isVideo } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 
 import { NavMenu } from './header/NavMenu';
@@ -79,38 +80,45 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
   return (
     <header 
       id="main-header"
-      className={`w-full border-b transition-all duration-300 relative z-[100] ${
-      isTransparent 
-        ? 'bg-white/10 dark:bg-black/10 backdrop-blur-xl border-white/10' 
-        : 'bg-white/80 dark:bg-card-dark/80 backdrop-blur-xl border-transparent'
-    }`}>
-      {/* Subtle Bottom Border Gradient */}
-      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent opacity-50" />
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      className={`w-full transition-all duration-300 relative z-[100] font-display ${
+        isTransparent 
+          ? 'bg-transparent border-none shadow-none' 
+          : 'bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl border-b border-slate-200/30 dark:border-white/10'
+      }`}>
       
-      <style>{`
-        .header-bg-dynamic {
-          background-image: ${config?.header_bg_image_url ? `url(${config.header_bg_image_url})` : 'none'};
-          background-position: ${config?.header_bg_position_x ?? 50}% ${config?.header_bg_position_y ?? 50}%;
-          background-size: ${config?.header_bg_scale ?? 100}% auto;
-          background-repeat: no-repeat;
-          opacity: ${typeof config?.header_bg_opacity === 'number' ? config.header_bg_opacity / 100 : 0.2};
-          transform: rotate(${config?.header_bg_rotation ?? 0}deg);
-        }
-      `}</style>
-      <div className={`absolute inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-300 ${config?.header_bg_grayscale ? 'grayscale' : ''}`}>
-        <div className="absolute inset-0 header-bg-dynamic" />
-      </div>
+      {!isTransparent && (
+        <>
+          {/* Subtle Bottom Border Gradient */}
+          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent opacity-50 pointer-events-none" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent pointer-events-none" />
+          
+          <style>{`
+            .header-bg-dynamic {
+              background-image: ${config?.header_bg_image_url ? `url(${config.header_bg_image_url})` : 'none'};
+              background-position: ${config?.header_bg_position_x ?? 50}% ${config?.header_bg_position_y ?? 50}%;
+              background-size: ${config?.header_bg_scale ?? 100}% auto;
+              background-repeat: no-repeat;
+              opacity: ${typeof config?.header_bg_opacity === 'number' ? config.header_bg_opacity / 100 : 0.2};
+              transform: rotate(${config?.header_bg_rotation ?? 0}deg);
+            }
+          `}</style>
+          <div className={`absolute inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-300 ${config?.header_bg_grayscale ? 'grayscale' : ''}`}>
+            <div className="absolute inset-0 header-bg-dynamic" />
+          </div>
+        </>
+      )}
 
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 md:h-20 flex items-center justify-between z-[101]">
-        <div className="flex items-center gap-4 flex-1">
-          <Link to="/" className="flex items-center gap-3 flex-shrink-0">
-            <div className="size-10 rounded-lg overflow-hidden bg-white dark:bg-black border border-slate-100 dark:border-white/10 flex items-center justify-center flex-shrink-0 transition-colors">
-              <Logo />
+        <div className="flex items-center gap-2 sm:gap-4 flex-1">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 flex-shrink-0 group">
+            <div className={`size-10 sm:size-12 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 shadow-lg ${
+              isVideo(config?.logo_url) ? 'bg-white dark:bg-black border border-slate-200 dark:border-white/10' : 'bg-transparent border-0'
+            }`}>
+              <Logo className="w-full h-full object-cover scale-110" />
             </div>
-            <div className="flex flex-col flex-1 min-w-0">
-              <h2 className="text-lg sm:text-2xl font-black tracking-tighter uppercase italic text-slate-900 dark:text-white leading-none whitespace-normal w-full">
+            <div className="flex flex-col min-w-0 max-w-fit pr-1 sm:pr-4">
+              <h2 className="text-[1.1rem] sm:text-3xl font-black italic tracking-tighter uppercase text-slate-900 dark:text-white leading-none whitespace-normal group-hover:opacity-80 transition-opacity">
                 {config?.site_name ? (
                   <>
                     {config.site_name.split(' ').map((word, i) => (
@@ -123,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
                   <><span className="text-primary">ANTENA</span> <span className="text-primary-orange">FLORIDA</span></>
                 )}
               </h2>
-              <span className="text-[10px] sm:text-xs font-bold text-primary tracking-widest uppercase whitespace-normal w-full">
+              <span className="text-[8px] sm:text-[12px] font-bold text-primary tracking-[0.2em] uppercase whitespace-normal leading-none mt-1">
                 {config?.slogan || 'La señal que nos une'}
               </span>
             </div>
@@ -135,14 +143,14 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
             <NavMenu mobileOpen={mobileMenuOpen} setMobileOpen={setMobileMenuOpen} />
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0 pl-4 lg:pl-8">
+        <div className="flex items-center gap-1.5 sm:gap-4 flex-shrink-0 pl-1 sm:pl-4 lg:pl-8 ml-auto">
           <button
             type="button"
             aria-label="Buscar"
             onClick={() => setSearchOpen(true)}
-            className="inline-flex items-center justify-center size-10 rounded-full bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/15 transition-colors"
+            className="inline-flex items-center justify-center size-8 sm:size-10 rounded-full bg-slate-200/50 dark:bg-black/40 backdrop-blur-md text-slate-700 dark:text-white hover:bg-slate-300/50 dark:hover:bg-black/60 transition-colors shadow-sm"
           >
-            <Search size={18} />
+            <Search size={18} className="sm:w-5 sm:h-5" />
           </button>
           
           <ThemeToggle />
@@ -153,7 +161,7 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
             <Link
               to="/admin"
               title={role === 'admin' || role === 'editor' ? "Dashboard" : "Mi Perfil"}
-              className="inline-flex bg-primary text-background-dark p-0.5 rounded-full font-bold text-sm uppercase tracking-wider hover:scale-105 transition-transform neon-glow items-center justify-center size-11 overflow-hidden"
+              className="inline-flex bg-primary text-background-dark p-0.5 rounded-full font-bold text-sm uppercase tracking-wider hover:scale-105 transition-transform neon-glow items-center justify-center size-9 sm:size-11 overflow-hidden"
             >
               {profileImage ? (
                 <img 
@@ -168,8 +176,8 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
                   }}
                 />
               ) : (
-                <div className="size-10 rounded-full bg-white/10 flex items-center justify-center">
-                  <User size={20} />
+                <div className="size-8 sm:size-10 rounded-full bg-white/10 flex items-center justify-center">
+                  <User size={18} className="sm:w-5 sm:h-5" />
                 </div>
               )}
             </Link>
@@ -184,11 +192,11 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
               </button>
               <button
                 type="button"
-                className="xl:hidden inline-flex items-center justify-center size-10 rounded-full bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/15 transition-colors"
+                className="xl:hidden inline-flex items-center justify-center size-8 sm:size-10 rounded-full bg-slate-200/50 dark:bg-black/40 backdrop-blur-md text-slate-700 dark:text-white hover:bg-slate-300/50 dark:hover:bg-black/60 transition-colors shadow-sm"
                 title="Iniciar Sesión"
                 onClick={handleLoginClick}
               >
-                <User size={20} />
+                <User size={18} className="sm:w-5 sm:h-5" />
               </button>
             </>
           )}

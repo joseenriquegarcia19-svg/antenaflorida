@@ -111,7 +111,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
               ¡Bienvenido!
             </h2>
             <div className="text-white/90 font-medium">
-               <div className="text-base font-black tracking-tighter uppercase italic text-white leading-none mb-1">
+               <div className="text-base font-extrabold tracking-tight uppercase text-white leading-none mb-1" style={{ fontFamily: '"Montserrat", "Helvetica Neue", Arial, sans-serif' }}>
                   {config?.site_name ? (
                     <>
                       {config.site_name.split(' ').map((word, i) => (

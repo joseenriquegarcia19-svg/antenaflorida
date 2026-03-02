@@ -1,100 +1,20 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-
-    <!-- Favicon: complete set for all browsers and devices -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
+      rel="stylesheet"
+    />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Dynamic theme-color handled by SiteConfigContext -->
-    <meta id="theme-color" name="theme-color" content="#38761D" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Antena Florida" />
-    <meta name="application-name" content="Antena Florida" />
-    <meta name="msapplication-TileColor" content="#38761D" />
     <link rel="manifest" href="/manifest.json" />
-
-    <title>Antena Florida | La Señal que nos Une</title>
-    <meta
-      name="description"
-      content="Escucha nuestra radio en vivo. La mejor música, noticias locales, programas de opinión y podcasts de actualidad. Tu radio digital 24/7."
-    />
-    <meta
-      name="keywords"
-      content="radio online, musica en vivo, noticias, podcasts, videos, radio en vivo, emisora, radio digital, Antena Florida"
-    />
-    <meta name="robots" content="index, follow" />
-    <meta name="author" content="Antena Florida" />
-    <meta name="copyright" content="Antena Florida" />
-    <link rel="canonical" href="https://www.antenaflorida.com/" />
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.antenaflorida.com/" />
-    <meta property="og:title" content="Antena Florida | La Señal que nos Une" />
-    <meta
-      property="og:description"
-      content="Escucha nuestra radio en vivo. La mejor música, noticias locales y programas de actualidad."
-    />
-    <meta
-      property="og:image"
-      content="https://www.antenaflorida.com/og-image.png"
-    />
-    <meta property="og:site_name" content="Antena Florida" />
-    <meta property="og:locale" content="es_ES" />
-
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://www.antenaflorida.com/" />
-    <meta
-      name="twitter:title"
-      content="Antena Florida | La Señal que nos Une"
-    />
-    <meta
-      name="twitter:description"
-      content="Escucha nuestra radio en vivo. La mejor música, noticias locales y programas de actualidad."
-    />
-    <meta
-      name="twitter:image"
-      content="https://www.antenaflorida.com/og-image.png"
-    />
-    <script>
-      (function () {
-        try {
-          var saved = localStorage.getItem("theme");
-          var prefersDark =
-            window.matchMedia &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches;
-          var theme = saved || (prefersDark ? "dark" : "light");
-          document.documentElement.classList.remove("light", "dark");
-          document.documentElement.classList.add(theme);
-        } catch (e) {}
-      })();
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700;900&family=Noto+Sans:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
-    <script type="module">
-      if (import.meta.hot?.on) {
-        import.meta.hot.on("vite:error", (error) => {
-          if (error.err) {
-            console.error(
-              [error.err.message, error.err.frame].filter(Boolean).join("\n"),
-            );
-          }
-        });
-      }
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Antena Florida | Radio en Vivo &amp; Podcasts</title>
   </head>
   <body>
     <div id="root"></div>

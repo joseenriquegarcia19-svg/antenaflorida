@@ -37,7 +37,7 @@ const GuestDetail = () => {
   const { config } = useSiteConfig();
   const { session, role, user } = useAuth();
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const { currentTrack } = usePlayer();
+  const { currentTrack, isPlayerCollapsed } = usePlayer();
   const location = useLocation();
   const navigate = useNavigate();
   const contentRef = useRef<HTMLElement>(null);
@@ -172,13 +172,26 @@ const GuestDetail = () => {
       {/* Top Branding */}
       <div className="fixed top-5 left-5 z-[100] flex items-center gap-3 bg-black/20 backdrop-blur-md border border-white/10 p-2 rounded-2xl shadow-2xl transition-all hover:bg-black/30">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="size-8 rounded-lg overflow-hidden bg-white/20 dark:bg-black/40 border border-white/10 flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110">
-            <Logo className="scale-75" />
+          <div className="size-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 shadow-lg border border-white/10 bg-white/10">
+            <Logo className="w-full h-full object-cover scale-110" />
           </div>
           <div className="flex flex-col">
             <h2 className="text-sm font-black tracking-tighter uppercase italic leading-none text-white/60 group-hover:text-white transition-colors">
-              {config?.site_name || 'ANTENA FLORIDA'}
+              {config?.site_name ? (
+                <>
+                  {config.site_name.split(' ').map((word, i) => (
+                    <span key={i} className={word.toLowerCase() === 'florida' ? 'text-primary-orange' : 'text-primary'}>
+                      {word}{' '}
+                    </span>
+                  ))}
+                </>
+              ) : (
+                <><span className="text-primary">ANTENA</span> <span className="text-primary-orange">FLORIDA</span></>
+              )}
             </h2>
+            <span className="text-[8px] font-bold text-primary tracking-[0.2em] uppercase leading-none mt-1">
+              {config?.slogan || 'La señal que nos une'}
+            </span>
           </div>
         </Link>
       </div>
@@ -225,14 +238,14 @@ const GuestDetail = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         </div>
 
-        <div className="relative z-10 max-w-5xl px-6 animate-fade-in-up">
-          <p className="text-primary font-black uppercase tracking-[0.4em] text-xs sm:text-sm mb-4">Invitado Especial</p>
+        <div className="relative z-10 max-w-5xl px-6 animate-fade-in-up drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+          <p className="text-primary font-black uppercase tracking-[0.4em] text-xs sm:text-sm mb-4" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>Invitado Especial</p>
           <h1 className="mb-6 leading-tight">
-            <span className="block font-extrabold uppercase text-4xl sm:text-6xl lg:text-7xl tracking-tighter">
+            <span className="block font-extrabold uppercase text-4xl sm:text-6xl lg:text-7xl tracking-tighter text-white" style={{ textShadow: '2px 4px 8px rgba(0,0,0,0.9)' }}>
               {mainTitle}
             </span>
             {subTitle && (
-              <span className="block font-serif italic text-6xl sm:text-8xl lg:text-[9rem] leading-none text-primary drop-shadow-[0_0_30px_rgba(255,199,0,0.3)]">
+              <span className="block font-serif italic text-6xl sm:text-8xl lg:text-[9rem] leading-none text-primary drop-shadow-[0_0_30px_rgba(255,199,0,0.3)]" style={{ textShadow: '3px 5px 10px rgba(0,0,0,0.9)' }}>
                 {subTitle}
               </span>
             )}
@@ -269,11 +282,18 @@ const GuestDetail = () => {
       </section>
 
       {/* Persistent Player */}
-      {currentTrack && (
-        <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-0 right-0 z-[100]">
-          <PlayerBar />
-        </div>
-      )}
+      <div
+        id="player-expanded-wrapper"
+        className={`fixed bottom-0 left-0 right-0 z-[100] pointer-events-none pb-[calc(104px+env(safe-area-inset-bottom))] xl:pb-12 transition-all duration-500 ${
+          currentTrack
+            ? isPlayerCollapsed
+              ? 'translate-y-4 shadow-none'
+              : 'translate-y-0 opacity-100'
+            : 'translate-y-full opacity-0 invisible'
+        }`}
+      >
+        <PlayerBar />
+      </div>
 
       {/* Floating Bottom Navigation — same style as ProgramBottomMenu */}
       <div className="fixed bottom-0 left-0 right-0 h-[calc(64px+env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-lg border-t border-white/10 z-[150] flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgb(0,0,0,0.4)] font-['Plus_Jakarta_Sans']">
@@ -299,8 +319,6 @@ const GuestDetail = () => {
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,900&display=swap');
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}} />

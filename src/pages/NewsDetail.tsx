@@ -79,7 +79,7 @@ export default function NewsDetail() {
   const [relatedNews, setRelatedNews] = useState<NewsItem[]>([]);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
   const [generatedFacts, setGeneratedFacts] = useState<string[]>([]);
-  const [isGeneratingFacts] = useState(false);
+  const [isGeneratingFacts, setIsGeneratingFacts] = useState(false);
   const [threadNews, setThreadNews] = useState<NewsItem[]>([]);
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
 

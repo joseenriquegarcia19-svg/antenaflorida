@@ -1,40 +1,36 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
-import { fileURLToPath, URL } from 'url'
+import path from 'path'
+import os from 'os'
 
-export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development'
-  const reactPlugin = isDev
-    ? react({
-        babel: {
-          plugins: ['react-dev-locator'],
-        },
-      })
-    : react()
+// Caché en /tmp para evitar ETIMEDOUT en carpetas sincronizadas (iCloud/Documents)
+const cacheDir = process.env.VITE_CACHE_DIR || path.join(os.tmpdir(), 'vite-radio-wave')
 
-  return {
-    cacheDir: './.vite',
-    resolve: {
-      alias: isDev ? {
-        '@vercel/speed-insights/react': fileURLToPath(new URL('./src/components/SpeedInsightsStub.tsx', import.meta.url))
-      } : ({} as Record<string, string>)
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
-    build: {
-      sourcemap: 'hidden',
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://api.live365.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
     },
-    plugins: [
-      reactPlugin,
-      tsconfigPaths(),
-    ],
-    server: {
-      proxy: {
-        '/api/live365': {
-          target: 'https://api.live365.com',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/live365/, ''),
-        },
-      },
+    watch: {
+      usePolling: true,
+      interval: 2000,
+      cwd: __dirname,
+      ignored: ['dist', 'dist/**', 'node_modules', 'node_modules/**'],
     },
-  }
+  },
+  build: {
+    outDir: process.env.VITE_OUT_DIR || path.join(os.tmpdir(), 'vite-radio-wave-dist'),
+  },
+  cacheDir,
 })

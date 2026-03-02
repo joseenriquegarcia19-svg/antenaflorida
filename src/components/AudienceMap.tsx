@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Globe } from 'lucide-react';
-import { vercelAnalyticsSnapshot } from '@/data/vercelAnalytics';
 
 interface CountryStat {
   country: string;
@@ -12,18 +11,18 @@ interface CountryStat {
 
 export function AudienceMap() {
   const [countries, setCountries] = useState<CountryStat[]>([]);
-  const [totalViews, setTotalViews] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [totalViews, setTotalViews] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
   const offsetRef = useRef(0);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  async function fetchStats() {
+  const fetchStats = React.useCallback(async () => {
     try {
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+
       const { data: fixedData } = await supabase
         .from('audience_map_entries')
         .select('*')
@@ -39,10 +38,22 @@ export function AudienceMap() {
         .map(item => ({
           country: item.country_name,
           code: item.country_code,
-          isFixed: true
+          isFixed: true,
+          views: item.listeners_count || 0
         })) || [];
 
-      // 2. Fetch Public Stats (Dynamic) from Vercel Snapshot
+      // 2. Fetch Real Unique Visitor Stats grouped by country using RPC (last 30 days)
+      const { data: statsData } = await supabase.rpc('stats_by_country', {
+        p_start: thirtyDaysAgo.toISOString(),
+        p_end: today.toISOString(),
+        p_limit: 50
+      });
+
+      const { data: overviewData } = await supabase.rpc('stats_overview', {
+        p_start: thirtyDaysAgo.toISOString(),
+        p_end: today.toISOString()
+      });
+
       const countryCodeToName: Record<string, string> = {
         'US': 'Estados Unidos', 'CU': 'Cuba', 'IE': 'Irlanda', 'SE': 'Suecia',
         'CA': 'Canadá', 'AR': 'Argentina', 'AU': 'Australia', 'FR': 'Francia',
@@ -50,49 +61,120 @@ export function AudienceMap() {
         'NL': 'Países Bajos', 'BR': 'Brasil', 'GB': 'Reino Unido', 'IN': 'India',
         'IT': 'Italia', 'PA': 'Panamá', 'PR': 'Puerto Rico', 'SG': 'Singapur',
         'TR': 'Turquía', 'VE': 'Venezuela', 'DO': 'República Dominicana', 
-        'EC': 'Ecuador', 'PE': 'Perú', 'CL': 'Chile'
+        'EC': 'Ecuador', 'PE': 'Perú', 'CL': 'Chile', 'UY': 'Uruguay', 
+        'PY': 'Paraguay', 'BO': 'Bolivia', 'HN': 'Honduras', 'GT': 'Guatemala',
+        'NI': 'Nicaragua', 'CR': 'Costa Rica', 'SV': 'El Salvador', 'PK': 'Pakistán'
       };
 
-      const statsList: CountryStat[] = vercelAnalyticsSnapshot.byCountry.map((item) => ({
-        country: countryCodeToName[item.country] || item.country,
-        views: item.views,
-        code: item.country
-      }));
+      const getCodeForCountry = (name: string): string | undefined => {
+        const map: Record<string, string> = {
+          'United States': 'US', 'Estados Unidos': 'US',
+          'Spain': 'ES', 'España': 'ES',
+          'Mexico': 'MX', 'México': 'MX',
+          'Argentina': 'AR', 'Colombia': 'CO', 'Chile': 'CL',
+          'Peru': 'PE', 'Perú': 'PE', 'Venezuela': 'VE', 'Ecuador': 'EC',
+          'Guatemala': 'GT', 'Bolivia': 'BO',
+          'Dominican Republic': 'DO', 'República Dominicana': 'DO',
+          'Honduras': 'HN', 'Paraguay': 'PY', 'El Salvador': 'SV',
+          'Nicaragua': 'NI', 'Costa Rica': 'CR',
+          'Panama': 'PA', 'Panamá': 'PA', 'Uruguay': 'UY',
+          'Brazil': 'BR', 'Brasil': 'BR', 'Canada': 'CA', 'Canadá': 'CA',
+          'United Kingdom': 'GB', 'Reino Unido': 'GB',
+          'France': 'FR', 'Francia': 'FR', 'Italy': 'IT', 'Italia': 'IT',
+          'Germany': 'DE', 'Alemania': 'DE'
+        };
+        return map[name] || Object.keys(countryCodeToName).find(k => countryCodeToName[k] === name);
+      };
 
-      const seen = new Set(fixedList.map(f => f.country.toLowerCase()));
-      const filteredStats = statsList.filter(s => !seen.has(s.country.toLowerCase()));
+      const unifiedStats: Record<string, CountryStat> = {};
 
-      let combined = [...fixedList, ...filteredStats];
+      // Populate with fixed entries first
+      fixedList.forEach(item => {
+        if (item.code) {
+          unifiedStats[item.code] = {
+            country: item.country,
+            code: item.code,
+            views: item.views || 0,
+            isFixed: true
+          };
+        }
+      });
 
-      // fallback list if no data is found to ensure the bar is never empty
-      if (combined.length === 0) {
-        combined = [
-          { country: 'Estados Unidos', code: 'US' },
-          { country: 'Argentina', code: 'AR' },
-          { country: 'España', code: 'ES' },
-          { country: 'Colombia', code: 'CO' },
-          { country: 'México', code: 'MX' },
-          { country: 'Venezuela', code: 'VE' },
-          { country: 'República Dominicana', code: 'DO' },
-          { country: 'Chile', code: 'CL' },
-          { country: 'Puerto Rico', code: 'PR' },
-          { country: 'Ecuador', code: 'EC' }
-        ];
+      // Overlay/Add dynamic stats from unique visitors
+      let calculatedTotalUnique = 0;
+      if (statsData) {
+        statsData.forEach((item: any) => {
+          if (!item.country || item.country === 'Unknown' || item.country === 'Untracked') return;
+          
+          calculatedTotalUnique += (item.unique_visitors || 0);
+          
+          const code = item.country_code || getCodeForCountry(item.country);
+          if (!code) return; // Skip if we can't identify the code
+
+          if (!unifiedStats[code]) {
+            unifiedStats[code] = {
+              country: countryCodeToName[code] || item.country,
+              code: code,
+              views: item.unique_visitors || 0,
+              isFixed: false
+            };
+          } else {
+            // Update views using dynamic data if it's higher than the fixed placeholder (or we just use dynamic)
+            unifiedStats[code].views = Math.max(unifiedStats[code].views || 0, item.unique_visitors || 0);
+          }
+        });
       }
 
-      // Vercel snapshot overview total
-      setTotalViews(vercelAnalyticsSnapshot.overview.views);
+      // Convert back to list and sort
+      let combined = Object.values(unifiedStats)
+        .sort((a, b) => (b.views || 0) - (a.views || 0));
 
-      // ensures smooth scrolling even with few countries by repeating the list if necessary
-      const result = combined.length < 10 ? [...combined, ...combined, ...combined] : combined;
+      const defaultCountries = [
+        { country: 'Estados Unidos', code: 'US', views: 0 },
+        { country: 'España', code: 'ES', views: 0 },
+        { country: 'Argentina', code: 'AR', views: 0 },
+        { country: 'Colombia', code: 'CO', views: 0 },
+        { country: 'México', code: 'MX', views: 0 },
+        { country: 'Chile', code: 'CL', views: 0 },
+        { country: 'Perú', code: 'PE', views: 0 },
+        { country: 'Venezuela', code: 'VE', views: 0 }
+      ];
+
+      // Fallback if empty or very few countries
+      if (combined.length < 4) {
+        // Add defaults that aren't already in combined
+        const existingCodes = new Set(combined.map(c => c.code));
+        for (const dc of defaultCountries) {
+          if (!existingCodes.has(dc.code)) {
+            combined.push(dc);
+          }
+        }
+      }
+      
+      // Ensure the list is long enough for smooth infinite scrolling
+      let result = [...combined];
+      while (result.length < 12) {
+        result = [...result, ...combined];
+      }
+
       setCountries(result);
+
+      if (overviewData && overviewData[0] && overviewData[0].unique_visitors) {
+        setTotalViews(overviewData[0].unique_visitors);
+      } else {
+        setTotalViews(calculatedTotalUnique);
+      }
 
     } catch (err) {
       console.error('Error fetching audience stats:', err);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   useEffect(() => {
     const el = scrollRef.current;

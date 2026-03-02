@@ -4,7 +4,9 @@ import { useWeather } from '@/contexts/WeatherContext';
 import { usePlayer } from '@/hooks/usePlayer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScheduleTimeline } from '@/hooks/useScheduleTimeline';
-import { Clock, Radio, Mic, Newspaper, MapPin, Users, MonitorPlay, Terminal, Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind } from 'lucide-react';
+import { Clock, Radio, Mic, Newspaper, MapPin, Users, MonitorPlay, Terminal, Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind, MessageSquare } from 'lucide-react';
+import { useLiveStats } from '@/contexts/LiveStatsContext';
+import { Link } from 'react-router-dom';
 
 interface TickerItem {
   id: string;
@@ -29,6 +31,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
   const [leftIndex, setLeftIndex] = useState(0);
   const [rightIndex, setRightIndex] = useState(0);
   const [time, setTime] = useState(new Date());
+  const { listenerCount, onlineCount, chatMessageCount } = useLiveStats();
 
   // Time update
   useEffect(() => {
@@ -86,7 +89,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
     fetchContent(config.top_bar_left_items, config.top_bar_left_mode).then(setLeftItems);
     fetchContent(config.top_bar_right_items, config.top_bar_right_mode).then(setRightItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, currentShow]);
+  }, [config?.top_bar_enabled, config?.top_bar_left_items, config?.top_bar_left_mode, config?.top_bar_right_items, config?.top_bar_right_mode, currentShow?.id]);
 
   // Ticker rotation
   useEffect(() => {
@@ -135,13 +138,13 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
 
     if (item.type === 'time') {
       return (
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-fade-in">
-          <Clock size={12} className="topbar-icon" />
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-fade-in text-slate-800 dark:text-white">
+          <Clock size={12} className="text-slate-600 dark:text-white/80" />
           <span>
             {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: !is24h })}
           </span>
           <span 
-            className="hidden sm:inline border-l pl-2 ml-1 topbar-divider"
+            className="hidden sm:inline border-l border-slate-300 dark:border-white/20 pl-2 ml-1"
           >
             {time.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}
           </span>
@@ -151,7 +154,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
 
     if (item.type === 'weather') {
       return (
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-fade-in">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-fade-in text-slate-800 dark:text-white">
           {locationName && (
             <div className="flex items-center gap-1 opacity-80">
               <MapPin size={12} />
@@ -160,13 +163,13 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
           )}
           {weather && (
             <div 
-              className="flex items-center gap-1 text-yellow-400 cursor-pointer hover:text-yellow-300 transition-colors"
+              className="flex items-center gap-1 text-slate-800 dark:text-yellow-400 cursor-pointer hover:text-primary dark:hover:text-yellow-300 transition-colors"
               onClick={toggleUnit}
               title="Cambiar unidad C°/F°"
             >
               {getWeatherIconComponent("w-3.5 h-3.5", 2.5)}
               <span>{getDisplayTemp(weather.temp)}°{unit}</span>
-              <span className="opacity-40 hidden md:inline">{weather.desc}</span>
+              <span className="opacity-70 dark:opacity-40 hidden md:inline">{weather.desc}</span>
             </div>
           )}
         </div>
@@ -192,7 +195,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
     return (
       <div className="flex items-center gap-2 overflow-hidden relative group">
         <span 
-          className="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded font-black uppercase flex items-center gap-1 flex-shrink-0 z-10 shadow-sm"
+          className="text-[10px] bg-slate-200/80 dark:bg-black/40 text-slate-800 dark:text-white px-2 py-0.5 rounded-full font-black uppercase flex items-center gap-1 flex-shrink-0 z-10 shadow-sm"
         >
           {item.type === 'live' ? (
             <span className="relative flex h-2 w-2">
@@ -212,7 +215,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
         <div className="relative overflow-hidden flex-1 min-w-0">
           <a 
             href={item.link} 
-            className="text-xs font-bold hover:opacity-80 transition-colors whitespace-nowrap block pr-8 topbar-ticker-link"
+            className="text-xs font-bold text-slate-800 dark:text-white hover:text-primary dark:hover:text-primary transition-colors whitespace-nowrap block pr-8 topbar-ticker-link"
           >
             {displayText}
           </a>
@@ -225,48 +228,76 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
     <>
       <style>{`
         .topbar-container {
-          --topbar-text: #ffffff;
-          --topbar-border: rgba(255,255,255,0.2);
+          --topbar-text: ${isTransparent ? 'inherit' : '#ffffff'};
+          --topbar-border: ${isTransparent ? 'rgba(148,163,184,0.3)' : 'rgba(255,255,255,0.2)'};
+        }
+        .dark .topbar-container {
+          --topbar-border: rgba(255,255,255,0.1);
         }
       `}</style>
       <div 
-        className={`relative w-full z-[60] border-b border-white/20 h-8 flex items-center justify-between px-4 sm:px-6 topbar-container transition-all duration-300 ${
+        className={`relative w-full z-[60] h-8 flex items-center justify-between px-4 sm:px-6 topbar-container transition-all duration-300 ${
           isTransparent 
-            ? 'bg-primary/90 backdrop-blur-xl text-white' 
+            ? 'bg-transparent text-slate-700 dark:text-white' 
             : 'bg-primary/95 backdrop-blur-xl text-white'
         }`}
       >
       
-      <div className="flex-1 overflow-hidden flex items-center relative z-10">
-        {renderContent(leftItems, leftIndex)}
+      <div className="flex-1 overflow-hidden flex items-center relative z-10 py-1">
+        <div className="flex items-center backdrop-blur-md rounded-full px-3 py-0.5 bg-slate-200/50 dark:bg-black/40 shadow-sm max-w-full">
+          {renderContent(leftItems, leftIndex)}
+        </div>
       </div>
       
       <div 
-        className="flex-shrink-0 pl-4 pr-4 border-l ml-4 topbar-divider"
+        className="flex-shrink-0 flex items-center gap-4 py-1 ml-2"
       >
-        {rightItems.length > 0 ? (
-          renderContent(rightItems, rightIndex)
-        ) : (
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-slide-in-right">
-            {locationName && (
-              <div className="flex items-center gap-1 text-white/90">
-                <MapPin size={12} className="text-white" />
-                <span>{locationName}</span>
-              </div>
-            )}
-            {weather && (
-              <div 
-                className="flex items-center gap-1.5 text-white cursor-pointer hover:text-primary transition-colors bg-white/10 px-2 py-0.5 rounded-full"
-                onClick={toggleUnit}
-                title="Cambiar unidad C°/F°"
-              >
-                {getWeatherIconComponent("w-3.5 h-3.5", 2.5)}
-                <span className="font-black">{getDisplayTemp(weather.temp)}°{unit}</span>
-                <span className="opacity-70 hidden md:inline font-medium lowercase text-[11px] border-l border-white/20 pl-1.5 ml-0.5">{weather.desc}</span>
-              </div>
-            )}
+        <div className="flex items-center gap-4 backdrop-blur-md rounded-full px-3 py-0.5 bg-slate-200/50 dark:bg-black/40 shadow-sm">
+          {/* Live Stats Section */}
+          <div className="hidden lg:flex items-center gap-3 pr-4 mr-2">
+             <div className="flex items-center gap-1.5" title={`${listenerCount} oyentes en vivo`}>
+                <div className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </div>
+                <span className="text-[10px] font-black uppercase whitespace-nowrap text-slate-700 dark:text-white">{listenerCount} Oyentes</span>
+             </div>
+             
+             <div className="flex items-center gap-1.5 opacity-80" title={`${onlineCount} personas navegando`}>
+                <Users size={12} className="text-slate-600 dark:text-white" />
+                <span className="text-[10px] font-bold uppercase whitespace-nowrap text-slate-700 dark:text-white">{onlineCount} En Línea</span>
+             </div>
+
+             <Link to="/chat" className="flex items-center gap-1.5 hover:text-primary transition-colors" title={`${chatMessageCount} mensajes en el chat`}>
+                <MessageSquare size={12} className="text-slate-600 dark:text-white" />
+                <span className="text-[10px] font-bold uppercase whitespace-nowrap text-slate-700 dark:text-white">{chatMessageCount} Chat</span>
+             </Link>
           </div>
-        )}
+
+          {rightItems.length > 0 ? (
+            renderContent(rightItems, rightIndex)
+          ) : (
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-slide-in-right">
+              {locationName && (
+                <div className="flex items-center gap-1 text-slate-700 dark:text-white/90">
+                  <MapPin size={12} className="text-slate-500 dark:text-white" />
+                  <span>{locationName}</span>
+                </div>
+              )}
+              {weather && (
+                <div 
+                  className="flex items-center gap-1.5 text-slate-800 dark:text-white cursor-pointer hover:text-primary transition-colors bg-slate-200/50 dark:bg-black/40 px-2 py-0.5 rounded-full"
+                  onClick={toggleUnit}
+                  title="Cambiar unidad C°/F°"
+                >
+                  {getWeatherIconComponent("w-3.5 h-3.5", 2.5)}
+                  <span className="font-black">{getDisplayTemp(weather.temp)}°{unit}</span>
+                  <span className="opacity-70 hidden md:inline font-medium lowercase text-[11px] border-l border-slate-300 dark:border-white/20 pl-1.5 ml-0.5">{weather.desc}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       </div>
     </>

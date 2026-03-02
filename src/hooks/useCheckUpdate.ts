@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import versionData from '../../version.json';
 
 const CHECK_INTERVAL = 1000 * 60 * 15; // 15 minutes
+const UPDATE_AVAILABLE_KEY = 'af_update_available';
 
 export function useCheckUpdate() {
   useEffect(() => {
@@ -12,7 +13,6 @@ export function useCheckUpdate() {
 
     const checkVersion = async () => {
       try {
-        // Fetch with cache-busting just in case, though vercel.json should handle it
         const response = await fetch('/version.json?t=' + Date.now(), {
           cache: 'no-store'
         });
@@ -21,10 +21,11 @@ export function useCheckUpdate() {
           const remoteData = await response.json();
           if (remoteData.version && remoteData.version !== versionData.version) {
             console.log('Nueva versión detectada:', remoteData.version);
-            
-            // Optional: You could show a toast here instead of immediate reload
-            // For now, let's do immediate reload if it's been some time
-            window.location.reload();
+            // Marcar que hay actualización (el usuario puede recargar manualmente)
+            sessionStorage.setItem(UPDATE_AVAILABLE_KEY, remoteData.version);
+            // Disparar evento para que un banner/toast pueda mostrarse
+            window.dispatchEvent(new CustomEvent('af-update-available', { detail: { version: remoteData.version } }));
+            // Ya no recargamos automáticamente para no interrumpir al usuario
           }
         }
       } catch (error) {
@@ -39,3 +40,5 @@ export function useCheckUpdate() {
     return () => clearTimeout(checkTimeout);
   }, []);
 }
+
+export { UPDATE_AVAILABLE_KEY };

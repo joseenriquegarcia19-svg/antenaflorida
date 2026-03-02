@@ -35,7 +35,7 @@ export const useGuest = () => {
   return context;
 };
 
-export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const GuestProvider = ({ children }: { children: React.ReactNode }) => {
   const { slug } = useParams<{ slug: string }>();
   const [guest, setGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);

@@ -107,17 +107,29 @@ export default function ManagePages() {
     { route: '/emisora', label: 'La Emisora' },
     { route: '/horario', label: 'Programación' },
     { route: '/noticias', label: 'Noticias' },
+    { route: '/noticias/secciones', label: 'Secciones de Noticias' },
     { route: '/noticias/:id', label: 'Detalle de Noticia' },
+    { route: '/noticias/seccion/:section', label: 'Noticias por Sección' },
+    { route: '/noticias/:id/relacionado', label: 'Contenido Relacionado' },
     { route: '/podcasts', label: 'Podcasts' },
     { route: '/podcasts/:id', label: 'Detalle de Podcast' },
+    { route: '/programas', label: 'Programas' },
     { route: '/programa/:id', label: 'Detalle de Programa' },
+    { route: '/:slug', label: 'Programa Inmersivo' },
     { route: '/equipo', label: 'Equipo' },
+    { route: '/equipo/:id', label: 'Miembro del Equipo' },
+    { route: '/invitados', label: 'Invitados' },
+    { route: '/invitado/:slug', label: 'Detalle de Invitado' },
     { route: '/servicios', label: 'Servicios' },
     { route: '/videos', label: 'Vídeos' },
     { route: '/reels', label: 'Reels' },
     { route: '/galeria', label: 'Galería' },
     { route: '/patrocinadores', label: 'Patrocinadores' },
     { route: '/sorteos', label: 'Sorteos' },
+    { route: '/eventos', label: 'Eventos' },
+    { route: '/trump', label: 'Trump' },
+    { route: '/chat', label: 'Chat en Vivo' },
+    { route: '/alexa', label: 'Alexa' },
     { route: '/player', label: 'Reproductor Full' },
 
     { route: '/buscar', label: 'Búsqueda' },
@@ -129,16 +141,20 @@ export default function ManagePages() {
     { route: '/admin', label: 'Panel de Control (Admin)' },
     { route: '/admin/news', label: 'Gestión de Noticias' },
     { route: '/admin/podcasts', label: 'Gestión de Podcasts' },
+    { route: '/admin/comments', label: 'Gestión de Comentarios' },
     { route: '/admin/stations', label: 'Gestión de Estaciones' },
     { route: '/admin/promotions', label: 'Gestión de Promociones' },
+    { route: '/admin/giveaways', label: 'Gestión de Sorteos' },
     { route: '/admin/settings', label: 'Configuración General' },
     { route: '/admin/users', label: 'Gestión de Usuarios' },
     { route: '/admin/analytics', label: 'Estadísticas' },
+    { route: '/admin/pages', label: 'Gestión de Páginas' },
     { route: '/admin/team', label: 'Gestión de Equipo' },
     { route: '/admin/gallery', label: 'Gestión de Galería' },
     { route: '/admin/sponsors', label: 'Gestión de Sponsors' },
     { route: '/admin/videos', label: 'Gestión de Vídeos' },
     { route: '/admin/reels', label: 'Gestión de Reels' },
+    { route: '/admin/profile', label: 'Perfil de Administrador' },
   ], []);
 
   const fetchConfig = useCallback(async () => {
@@ -424,43 +440,45 @@ export default function ManagePages() {
                  </p>
               </div>
 
-              <div className="space-y-4">
+              <div>
                 {filteredItems.length === 0 ? (
                   <div className="text-slate-500 dark:text-white/50 italic text-center py-8">
                     {searchTerm ? 'No se encontraron páginas con el término de búsqueda.' : 'No hay páginas para configurar.'}
                   </div>
                 ) : (
                   <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredItems.map((item) => (
-                      <div key={item.route} className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-4 transition-colors">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                          <div>
-                            <div className="text-slate-900 dark:text-white font-bold">{item.label}</div>
-                            <div className="text-slate-500 dark:text-white/40 text-xs font-mono">{item.route}</div>
-                          </div>
-                          <label className="inline-flex items-center gap-3 cursor-pointer select-none">
-                            <span className="text-slate-600 dark:text-white/60 text-sm font-bold">Modo Mantenimiento</span>
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                checked={item.maintenance_enabled}
-                                onChange={(e) => {
-                                  const next = e.target.checked;
-                                  setMaintenanceItems((prev) =>
-                                    prev.map((p) => (p.route === item.route ? { ...p, maintenance_enabled: next } : p)),
-                                  );
-                                }}
-                                className="peer sr-only"
-                              />
-                              <div className="w-11 h-6 bg-slate-200 dark:bg-white/10 rounded-full peer-checked:bg-primary transition-colors"></div>
-                              <div className="absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5 shadow-sm"></div>
+                      <div key={item.route} className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-3 transition-colors flex flex-col justify-between">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-slate-900 dark:text-white font-bold text-sm">{item.label}</div>
+                              <div className="text-slate-500 dark:text-white/40 text-[10px] font-mono mt-0.5">{item.route}</div>
                             </div>
-                          </label>
+                            <label className="inline-flex items-center cursor-pointer select-none">
+                              <div className="relative">
+                                <input
+                                  type="checkbox"
+                                  checked={item.maintenance_enabled}
+                                  onChange={(e) => {
+                                    const next = e.target.checked;
+                                    setMaintenanceItems((prev) =>
+                                      prev.map((p) => (p.route === item.route ? { ...p, maintenance_enabled: next } : p)),
+                                    );
+                                  }}
+                                  className="peer sr-only"
+                                />
+                                <div className="w-9 h-5 bg-slate-200 dark:bg-white/10 rounded-full peer-checked:bg-primary transition-colors"></div>
+                                <div className="absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4 shadow-sm"></div>
+                              </div>
+                            </label>
+                          </div>
                         </div>
                         
                         {item.maintenance_enabled && (
-                          <div className="mt-4 animate-fade-in">
-                            <label className="block text-slate-500 dark:text-white/60 text-xs font-bold uppercase tracking-widest mb-2">Mensaje para el usuario</label>
+                          <div className="mt-3 animate-fade-in">
+                            <label className="block text-slate-500 dark:text-white/60 text-[10px] font-bold uppercase tracking-widest mb-1.5">Mensaje para el usuario</label>
                             <input
                               value={item.maintenance_message}
                               onChange={(e) => {
@@ -469,16 +487,17 @@ export default function ManagePages() {
                                   prev.map((p) => (p.route === item.route ? { ...p, maintenance_message: next } : p)),
                                 );
                               }}
-                              className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2 text-slate-900 dark:text-white focus:border-primary outline-none transition-colors"
+                              className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-primary outline-none transition-colors"
                               placeholder="Ej: Estamos realizando mejoras..."
                             />
                           </div>
                         )}
                       </div>
                     ))}
+                    </div>
                     
                     {filteredItems.length > 0 && (
-                       <div className="flex justify-center pt-4">
+                       <div className="flex justify-center pt-6">
                          <button className="px-6 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full text-slate-600 dark:text-white font-bold text-sm hover:bg-slate-200 dark:hover:bg-white/10 transition-colors shadow-sm">
                            Cargar más páginas
                          </button>

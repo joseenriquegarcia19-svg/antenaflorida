@@ -100,10 +100,10 @@ export const NotificationSystem: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setNotificationsOpen(!notificationsOpen)}
-        className="inline-flex items-center justify-center size-10 rounded-full bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/15 transition-colors relative"
+        className="inline-flex items-center justify-center size-8 sm:size-10 rounded-full bg-slate-200/50 dark:bg-black/40 backdrop-blur-md text-slate-700 dark:text-white hover:bg-slate-300/50 dark:hover:bg-black/60 transition-colors relative shadow-sm"
         aria-label={`Notificaciones${unreadCount > 0 ? `, ${unreadCount} sin leer` : ''}`}
       >
-        <Bell size={18} />
+        <Bell size={18} className="sm:w-5 sm:h-5" />
         {unreadCount > 0 && (
           <span className="absolute top-0 right-0 size-4 bg-primary text-background-dark text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
             {unreadCount}

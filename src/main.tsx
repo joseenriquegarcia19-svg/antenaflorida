@@ -12,28 +12,31 @@ import { PlayerProvider } from './contexts/PlayerContext'
 import { SiteConfigProvider } from './contexts/SiteConfigContext'
 import { WeatherProvider } from './contexts/WeatherContext'
 import { ToastProvider } from './contexts/ToastContext'
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      console.log('SW registered: ', registration);
-    }).catch(registrationError => {
-      console.log('SW registration failed: ', registrationError);
-    });
-  });
-}
+ 
+ if ('serviceWorker' in navigator) { 
+   window.addEventListener('load', () => { 
+     navigator.serviceWorker.register('/sw.js').then(registration => { 
+       console.log('SW registered: ', registration); 
+     }).catch(registrationError => { 
+       console.log('SW registration failed: ', registrationError); 
+     }); 
+   }); 
+ } 
+ 
+ window.addEventListener('error', (e) => {
+   document.body.innerHTML += `<div style="color: red; position: fixed; top: 0; left: 0; z-index: 9999; background: white; padding: 20px;">Global Error: ${e.message}</div>`;
+ });
+ window.addEventListener('unhandledrejection', (e) => {
+   document.body.innerHTML += `<div style="color: red; position: fixed; top: 50px; left: 0; z-index: 9999; background: white; padding: 20px;">Unhandled Promise: ${e.reason}</div>`;
+ });
 
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Data is fresh for 5 minutes
       staleTime: 1000 * 60 * 5,
-      // Cache data for 30 minutes
       gcTime: 1000 * 60 * 30,
-      // Retry failed queries 1 time
       retry: 1,
-      // Refetch on window focus (optional, maybe disable to save even more requests)
       refetchOnWindowFocus: false,
     },
   },
@@ -44,9 +47,9 @@ createRoot(document.getElementById('root')!).render(
     {/* @ts-ignore */}
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
-        <SiteConfigProvider>
-          <ToastProvider>
-            <AuthProvider>
+        <AuthProvider>
+          <SiteConfigProvider>
+            <ToastProvider>
               <PaletteProvider>
                 <ThemeProvider>
                   <WeatherProvider>
@@ -57,9 +60,9 @@ createRoot(document.getElementById('root')!).render(
                   </WeatherProvider>
                 </ThemeProvider>
               </PaletteProvider>
-            </AuthProvider>
-          </ToastProvider>
-        </SiteConfigProvider>
+            </ToastProvider>
+          </SiteConfigProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </HelmetProvider>
   </StrictMode>,

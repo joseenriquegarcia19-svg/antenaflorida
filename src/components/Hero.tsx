@@ -12,6 +12,7 @@ import { ScheduleTimeline } from './ScheduleTimeline';
 import { supabase } from '../lib/supabase';
 import { Equalizer } from './ui/Equalizer';
 import { useColorExtraction } from '@/hooks/useColorExtraction';
+import { GENERIC_ARTISTS, GENERIC_PROGRAM_TITLES } from '../lib/constants';
 
 interface ShowComment {
   id: string;
@@ -71,13 +72,16 @@ const ShowTimeCounter: React.FC<TimeCounterProps> = ({ endTime, startTime, start
 
   return (
     <>
-      <span className="text-white/20">•</span>
-      <span className="text-[8px] sm:text-[9px] font-bold flex items-center gap-1" style={{ color: dynamicRgb ? `rgb(${dynamicRgb})` : undefined }}>
+      <span className="text-white/20 ml-1">•</span>
+      <span className="text-[9px] font-bold flex items-center gap-1" style={{ color: dynamicRgb ? `rgb(${dynamicRgb})` : undefined }}>
         <Clock size={8} /> Quedan {timeLeft}
       </span>
     </>
   );
 };
+
+/** Programas genéricos (ej. Programa Música): no mostrar nombre del creador, mostrar "Escuchas a Antena Florida". */
+
 
 const LiveStatsCounter: React.FC<{ dynamicRgb?: string }> = ({ dynamicRgb }) => {
   const { listenerCount } = useLiveStats();
@@ -131,7 +135,6 @@ export const Hero: React.FC = () => {
   useLiveStats();
 
   const isPlayingRef = useRef(isPlaying);
-  const lastArtistFetchRef = useRef<string>('');
   // Tracks current artist as a ref so fetchShowData doesn't need to close over changing values
   const currentArtistRef = useRef<string>('');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -299,6 +302,7 @@ export const Hero: React.FC = () => {
 
   const isPromotion = !!(displayShow && displayShow.is_promotion);
   const shouldShowTimeline = !isPromotion && todayShows.length > 0;
+  const isGenericMusicProgram = displayShow && !displayShow.is_promotion && GENERIC_PROGRAM_TITLES.includes(displayShow.title?.toLowerCase().trim());
 
   const fetchShowData = React.useCallback(async (showId: string) => {
     try {
@@ -318,10 +322,8 @@ export const Hero: React.FC = () => {
       }
 
       // Read artist from stable ref to avoid recreating callback when artist changes
-      const artistName = currentArtistRef.current || 'Antena Florida';
-      const artistKey = artistName.toLowerCase();
-      const isGeneric = ['musica', 'música', 'radio en vivo', 'la señal que nos une', 'antena florida', ''].includes(artistKey);
 
+      /* El usuario solicitó desactivar los mensajes generados por IA
       if (artistName && !isGeneric) {
         // Prevent re-fetching if artist hasn't meaningfully changed
         if (artistKey !== lastArtistFetchRef.current) {
@@ -348,6 +350,7 @@ export const Hero: React.FC = () => {
           }
         }
       }
+      */
 
       // For UUID shows always update. For non-UUID (music blocks), only update comments
       // if we actually loaded something — otherwise keep existing AI facts in place.
@@ -452,13 +455,9 @@ export const Hero: React.FC = () => {
         setRealShowId(realId);
       } else {
         setRealShowId(null);
-        // If it's a music block or live now, we still want AI artist info
-        if (realId === 'live-music' || realId === 'live-now' || realId === 'default-live' || realId === 'default-music') {
-          fetchShowData(realId);
-        } else {
-          setComments([]);
-          setAverageRating(null);
-        }
+        // The user requested to remove AI messages from the music program
+        setComments([]);
+        setAverageRating(null);
       }
     };
 
@@ -626,8 +625,9 @@ export const Hero: React.FC = () => {
                                  : `/programa/${realShowId}`}
                                className={`hover:text-white transition-colors text-[9px] font-black uppercase tracking-widest ${comments.length > 0 || averageRating !== null ? 'border-l border-white/10 pl-2' : ''}`}
                                style={{ color: `rgb(${dynamicRgb})` }}
+                               title="Califica este programa y comparte tu opinión"
                              >
-                               agrega tu opinión aquí
+                               CALIFICA Y DEJA TU OPINIÓN AQUÍ
                              </Link>
                           )}
                         </div>
@@ -635,7 +635,7 @@ export const Hero: React.FC = () => {
                     )}
                     
                     <div className="flex flex-wrap items-center gap-3">
-                       {displayShow.show_team_members && displayShow.show_team_members.length > 0 && 
+                       {displayShow.show_team_members && displayShow.show_team_members.length > 0 && !isGenericMusicProgram && 
                         displayShow.title.toLowerCase() !== 'musica' && 
                         displayShow.title.toLowerCase() !== 'música' ? (
                           <div className="flex items-center gap-2 bg-black/20 backdrop-blur-sm p-1.5 pr-4 rounded-full border border-white/10">
@@ -682,7 +682,7 @@ export const Hero: React.FC = () => {
                 ) : (
                   <p className="text-base sm:text-xl md:text-2xl text-white/80 max-w-2xl leading-relaxed flex items-center gap-2 flex-wrap">
                     Escuchas a <span className="text-white font-bold inline-flex items-center gap-2">
-                      {displayShow.host}
+                      {isGenericMusicProgram ? (config?.site_name || 'Antena Florida') : displayShow.host}
                     </span>.
                   </p>
                 )}
@@ -718,30 +718,6 @@ export const Hero: React.FC = () => {
                             {currentShow && (
                               <div className="flex flex-col">
                                 <div className="flex items-center gap-3">
-
-                                  
-                                  {currentShow?.end_time && (
-                                    <ShowTimeCounter 
-                                      endTime={currentShow.end_time} 
-                                      startTime={currentShow.time} 
-                                      startDate={currentShow.date} 
-                                      dynamicRgb={dynamicRgb} 
-                                    />
-                                  )}
-                                </div>
-                                
-                                <div className="mt-2 flex items-center gap-2">
-                                  <div 
-                                    className="size-5 sm:size-6 bg-primary/20 rounded-lg flex items-center justify-center relative"
-                                    style={{ backgroundColor: `rgba(${dynamicRgb}, 0.2)` }}
-                                  >
-                                    <Users size={12} className="sm:size-[14px]" style={{ color: `rgb(${dynamicRgb})` }} />
-                                    <span 
-                                      className="absolute -top-0.5 -right-0.5 size-2 rounded-full border border-slate-900 animate-pulse" 
-                                      style={{ backgroundColor: `rgb(${dynamicRgb})` }}
-                                    />
-                                  </div>
-                                  <LiveStatsCounter dynamicRgb={dynamicRgb} />
                                 </div>
                               </div>
                             )}
@@ -897,15 +873,16 @@ export const Hero: React.FC = () => {
                   <span className="text-white font-black text-xs sm:text-sm uppercase truncate max-w-[180px] sm:max-w-[280px] md:max-w-[400px] leading-tight">
                     {currentTrack?.title || currentShow?.title || 'Emisión En Vivo'}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-white/50 font-bold text-[9px] uppercase tracking-widest truncate">
-                      {currentTrack?.artist || currentShow?.host || 'Antena Florida'}
+                      { (currentTrack?.artist && GENERIC_ARTISTS.includes(currentTrack.artist.toLowerCase().trim())) || (currentShow?.title && GENERIC_PROGRAM_TITLES.includes(currentShow.title.toLowerCase().trim()))
+                        ? (config?.site_name || 'Antena Florida') 
+                        : (currentTrack?.artist || currentShow?.host || 'Antena Florida') }
                     </span>
-                    {currentShow && (
-                       <Link to="/chat" className="text-primary hover:text-white transition-colors">
-                         <MessageCircle size={10} className="animate-pulse" />
-                       </Link>
-                     )}
+                    <Link to="/chat" className="inline-flex items-center gap-1.5 text-primary hover:text-white transition-colors font-bold text-[9px] uppercase tracking-widest">
+                      <MessageCircle size={10} className="animate-pulse flex-shrink-0" />
+                      <span>Chat en vivo</span>
+                    </Link>
                   </div>
                 </div>
               </div>

@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Header } from '../components/Header';
 import Footer from '../components/Footer';
 import { PlayerBar } from '../components/PlayerBar';
 import { TopBar } from '../components/TopBar';
-import { BreakingNewsTicker } from '../components/BreakingNewsTicker';
 import { MobileBottomMenu } from '../components/MobileBottomMenu';
+import { BreakingNewsTicker } from '../components/BreakingNewsTicker';
 import { WelcomeModal } from '../components/WelcomeModal';
 import { LoginModal } from '../components/LoginModal';
 import { usePlayer } from '../hooks/usePlayer';
@@ -15,32 +15,14 @@ import { supabase } from '../lib/supabase';
 import { SEO } from '../components/SEO';
 
 export function MainLayout() {
-  const { currentTrack } = usePlayer();
+  const { currentTrack, isPlayerCollapsed } = usePlayer();
   const location = useLocation();
-  const { getMaintenanceForPath } = useSiteConfig();
+  const { config, getMaintenanceForPath } = useSiteConfig();
   const { user, refreshProfile } = useAuth();
   const isChatPage = location.pathname === '/chat';
   const maintenance = getMaintenanceForPath(location.pathname);
   const [showWelcome, setShowWelcome] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  const handleLoginClick = useCallback(() => {
-    setIsLoginModalOpen(true);
-  }, []);
-
-  const handleLoginClose = useCallback(() => {
-    setIsLoginModalOpen(false);
-  }, []);
-
-  // Scroll listener for sticky header blur
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Check for welcome modal
   useEffect(() => {
@@ -59,26 +41,38 @@ export function MainLayout() {
     }
   };
 
-  const isDemoPage = location.pathname.startsWith('/acompaname-tonight') || location.pathname === '/demo';
-
   // Remove padding-top since Header is sticky and content should flow naturally underneath
-  const paddingTop = isDemoPage ? 'pt-0' : 'pt-0';
+  const paddingTop = 'pt-0';
 
-  // Removed duplicated online presence tracking. Handled globally by LiveStatsContext.
+
 
   return (
     <div className="min-h-screen bg-background font-display text-foreground transition-colors duration-300 flex flex-col">
-      <SEO favicon={currentTrack?.image_url} />
-      {!isChatPage && !isDemoPage && (
-        <div className={`sticky top-0 z-50 w-full sticky-safari-fix transition-all duration-300 ${
-          isScrolled ? 'shadow-lg border-b border-slate-200/50 dark:border-white/5' : 'shadow-sm'
-        }`}>
-          <TopBar isTransparent={isDemoPage || isScrolled} />
-          <Header isTransparent={isDemoPage} onLoginClick={handleLoginClick} />
-          <BreakingNewsTicker isTransparent={isDemoPage || isScrolled} />
+      <SEO />
+      {!isChatPage && (
+        <div className="sticky top-0 z-50 w-full shadow-sm bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl transition-all duration-300">
+          <style>{`
+            .header-bg-dynamic {
+              background-image: ${config?.header_bg_image_url ? `url(${config.header_bg_image_url})` : 'none'};
+              background-position: ${config?.header_bg_position_x ?? 50}% ${config?.header_bg_position_y ?? 50}%;
+              background-size: ${config?.header_bg_scale ?? 100}% auto;
+              background-repeat: no-repeat;
+              opacity: ${typeof config?.header_bg_opacity === 'number' ? config.header_bg_opacity / 100 : 0.2};
+              transform: rotate(${config?.header_bg_rotation ?? 0}deg);
+            }
+          `}</style>
+          <div className={`absolute inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-300 ${config?.header_bg_grayscale ? 'grayscale' : ''}`}>
+            <div className="absolute inset-0 header-bg-dynamic" />
+          </div>
+          {/* Subtle Bottom Border Gradient */}
+          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent opacity-50 pointer-events-none" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent pointer-events-none" />
+
+          <TopBar isTransparent={true} />
+          <Header onLoginClick={() => setIsLoginModalOpen(true)} isTransparent={true} />
+          <BreakingNewsTicker />
         </div>
       )}
-      
       <main className={`${paddingTop} flex-grow transition-all duration-300`}>
         {maintenance.enabled ? (
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
@@ -94,14 +88,21 @@ export function MainLayout() {
         )}
       </main>
       <WelcomeModal isOpen={showWelcome} onClose={handleCloseWelcome} />
-      <LoginModal isOpen={isLoginModalOpen} onClose={handleLoginClose} />
-      {!isChatPage && !isDemoPage && <Footer />}
-      {currentTrack && (
-        <div className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] xl:bottom-0 z-[100] transition-all duration-300">
-          <PlayerBar />
-        </div>
-      )}
-      {!isDemoPage && !isChatPage && <MobileBottomMenu onLoginClick={handleLoginClick} />}
+      <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      {!isChatPage && <Footer />}
+      <div
+        id="player-expanded-wrapper"
+        className={`fixed bottom-0 left-0 right-0 z-[100] pointer-events-none pb-[calc(104px+env(safe-area-inset-bottom))] xl:pb-12 transition-all duration-500 ${
+          currentTrack
+            ? isPlayerCollapsed
+              ? 'translate-y-4 shadow-none'
+              : 'translate-y-0 opacity-100'
+            : 'translate-y-full opacity-0 invisible'
+        }`}
+      >
+        <PlayerBar />
+      </div>
+      {!isChatPage && <MobileBottomMenu onLoginClick={() => setIsLoginModalOpen(true)} />}
     </div>
   );
-};
+}

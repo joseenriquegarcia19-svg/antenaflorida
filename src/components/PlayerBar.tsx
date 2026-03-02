@@ -1,30 +1,33 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
     Pause,
     Volume2,
     ListMusic,
     Play,
-    ChevronDown,
     Trash2,
     X,
     Share2,
-    Maximize2,
     Info,
-    Youtube,
-    Facebook
+    ExternalLink,
+    VolumeX,
+    ChevronDown,
+    Music,
+    MessageSquare,
+    Users,
+    Radio
   } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { usePlayer, usePlayerProgress } from '@/hooks/usePlayer';
 import { getValidImageUrl, getContrastYIQ, formatTime as formatTimeStr } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useScheduleTimeline } from "@/hooks/useScheduleTimeline";
 import { useSiteConfig } from "@/contexts/SiteConfigContext";
-import { Equalizer } from "./ui/Equalizer";
 import { VideoModal } from "./ui/VideoModal";
 import { useColorExtraction } from "@/hooks/useColorExtraction";
+import { GENERIC_ARTISTS, GENERIC_PROGRAM_TITLES } from "@/lib/constants";
+import { useLiveStats } from "@/contexts/LiveStatsContext";
 
 export const PlayerBar: React.FC = () => {
-  const navigate = useNavigate();
   const { config } = useSiteConfig();
   const { user } = useAuth();
   const is24h = user?.accessibility_settings?.time_format === '24h';
@@ -35,129 +38,88 @@ export const PlayerBar: React.FC = () => {
     togglePlay,
     volume,
     setVolume,
+    setVolumeImmediate,
     queue,
     queueIndex,
     setQueueIndex,
     removeFromQueue,
     clearQueue,
     isPlayerCollapsed,
-    setIsPlayerCollapsed,
-    playerDragX,
-    playerDragY,
-    setPlayerDragPos,
+    setIsPlayerCollapsed
   } = usePlayer();
+  const { listenerCount, onlineCount, chatMessageCount } = useLiveStats();
   
-  const { currentTime, duration, seekTo } = usePlayerProgress();
+  const { currentTime, duration } = usePlayerProgress();
   const [showQueue, setShowQueue] = useState(false);
-  const location = useLocation();
-  const isChatPage = location.pathname === '/chat';
+  
+  // Local volume state so dragging the slider doesn't block the UI (throttled sync to context)
+  const [localVolume, setLocalVolume] = useState(volume);
+  const [prevVolume, setPrevVolume] = useState(volume > 0 ? volume : 0.8);
+  const volumeSyncTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  useEffect(() => {
+    setLocalVolume(volume);
+    if (volume > 0) setPrevVolume(volume);
+  }, [volume]);
+  
+  const commitVolume = useCallback((v: number) => {
+    setVolumeImmediate(v);
+    if (volumeSyncTimeout.current) clearTimeout(volumeSyncTimeout.current);
+    volumeSyncTimeout.current = setTimeout(() => {
+      setVolume(v);
+      volumeSyncTimeout.current = null;
+    }, 80);
+  }, [setVolume, setVolumeImmediate]);
+  
+  const toggleMute = () => {
+    if (localVolume > 0) {
+      setPrevVolume(localVolume);
+      setLocalVolume(0);
+      commitVolume(0);
+    } else {
+      const newV = prevVolume > 0 ? prevVolume : 0.8;
+      setLocalVolume(newV);
+      commitVolume(newV);
+    }
+  };
+
+  const [showProgramDetails, setShowProgramDetails] = useState(false);
   const [videoModal, setVideoModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
+  const barRef = useRef<HTMLDivElement>(null);
+  const [sheetRect, setSheetRect] = useState({ bottom: 80, left: 0, width: 320 });
+  const sheetOpen = showQueue || showProgramDetails;
+
+  // Medir la barra para posicionar la ventana justo encima, mismo ancho y centrada en la barra
+  React.useEffect(() => {
+    if (!sheetOpen || !barRef.current) return;
+    const measure = () => {
+      if (barRef.current) {
+        const rect = barRef.current.getBoundingClientRect();
+        // Position the sheet exactly 1px overlapping the bar to hide the joint
+        setSheetRect({
+          bottom: window.innerHeight - rect.top - 1,
+          left: rect.left,
+          width: rect.width,
+        });
+      }
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [sheetOpen]);
 
   // Dynamic colors
   const { dynamicRgb } = useColorExtraction(currentTrack?.image_url);
   const textContrast = getContrastYIQ(dynamicRgb);
 
-  // Drag state for collapsed player
-  const [isDragging, setIsDragging] = useState(false);
-  const isDraggingRef = useRef(false);
-  const [dragX, setDragX] = useState(playerDragX);
-  const [dragY, setDragY] = useState(playerDragY);
-  const [totalMovement, setTotalMovement] = useState(0);
-  const dragStartY = React.useRef(0);
-  const dragStartX = React.useRef(0);
-  const dragStartPosX = React.useRef(0);
-  const dragStartPosY = React.useRef(0);
-  const dragStartOffsetY = React.useRef(0);
-  const dragStartOffsetX = React.useRef(0);
-
-  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
-    setIsDragging(true);
-    isDraggingRef.current = true;
-    setTotalMovement(0);
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    dragStartY.current = clientY;
-    dragStartX.current = clientX;
-    dragStartPosX.current = clientX;
-    dragStartPosY.current = clientY;
-    dragStartOffsetY.current = dragY;
-    dragStartOffsetX.current = dragX;
-  };
-
-  const handleDragMove = React.useCallback((e: MouseEvent | TouchEvent) => {
-    if (!isDragging) return;
-    
-    // Prevent background scrolling while dragging
-    if (e.cancelable) {
-      e.preventDefault();
-    }
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-    
-    // Track total movement distance
-    const dx = clientX - dragStartPosX.current;
-    const dy = clientY - dragStartPosY.current;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    setTotalMovement(prev => Math.max(prev, distance));
-
-    const deltaY = clientY - dragStartY.current;
-    const deltaX = clientX - dragStartX.current;
-    
-    // Calculate new position
-    const newY = dragStartOffsetY.current + deltaY;
-    const newX = dragStartOffsetX.current + deltaX;
-    
-    // Basic bounds checking
-    const windowHeight = window.innerHeight;
-    const windowWidth = window.innerWidth;
-
-    // Max up: -windowHeight + 150px. Max down: 0
-    const clampedY = Math.min(0, Math.max(-windowHeight + 150, newY));
-    
-    // Horizontal bounds: prevent dragging outside screen
-    // Player is fixed right-4 (or left-4). 
-    // If right-4, newX < 0 moves it LEFT. Max left: -windowWidth + 80
-    // If left-4, newX > 0 moves it RIGHT. Max right: windowWidth - 80
-    const maxHorizontal = windowWidth - 100;
-    const clampedX = isChatPage 
-      ? Math.min(maxHorizontal, Math.max(0, newX))
-      : Math.min(0, Math.max(-maxHorizontal, newX));
-    
-    setDragY(clampedY);
-    setDragX(clampedX);
-  }, [isDragging, isChatPage]);
-
-  const handleDragEnd = React.useCallback(() => {
-    setIsDragging(false);
-    setTimeout(() => {
-      isDraggingRef.current = false;
-    }, 50); // Small delay to ensure click handler sees it
-    // Persist to global context when drag ends
-    setPlayerDragPos(dragX, dragY);
-  }, [dragX, dragY, setPlayerDragPos]);
-
-  React.useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleDragMove);
-      window.addEventListener('mouseup', handleDragEnd);
-      window.addEventListener('touchmove', handleDragMove, { passive: false });
-      window.addEventListener('touchend', handleDragEnd);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleDragMove);
-      window.removeEventListener('mouseup', handleDragEnd);
-      window.removeEventListener('touchmove', handleDragMove);
-      window.removeEventListener('touchend', handleDragEnd);
-    };
-  }, [isDragging, handleDragMove, handleDragEnd]);
-
   // Get current show progress
+  const isGenericArtist = currentTrack?.artist && GENERIC_ARTISTS.includes(currentTrack.artist.toLowerCase().trim());
+  const isGenericProgram = currentShow?.title && GENERIC_PROGRAM_TITLES.includes(currentShow.title.toLowerCase().trim());
+  const displayArtist = (isGenericArtist || isGenericProgram) 
+    ? (config?.site_name || 'Antena Florida') 
+    : (currentTrack?.artist || currentShow?.host || (config?.site_name || 'Antena Florida'));
   const showStatus = currentShow ? getShowStatus(currentShow) : null;
   const showProgress = showStatus?.progress || 0;
-
-  // Pre-calculate ARIA values to satisfy linter
-  const ariaLiveProgress = Math.round(showProgress);
 
   // Determine what to show in the queue list
   const isLiveMode = currentTrack?.isLive;
@@ -168,9 +130,18 @@ export const PlayerBar: React.FC = () => {
         artist: s.host,
         image_url: s.image_url,
         isLive: s.is_24_7,
-        time: s.time // Add time for display
+        time: s.time,
+        id: s.id,
+        slug: s.slug
       }))
-    : queue;
+    : (queue || []);
+
+  // Program page URL for current show (live mode)
+  const programPageUrl = currentShow && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentShow.id)
+    ? (currentShow.slug === 'acompaname-tonight' || currentShow.slug === 'el-fogon-show'
+        ? `/${currentShow.slug}`
+        : `/programa/${currentShow.slug || currentShow.id}`)
+    : null;
 
   interface QueueItem {
     title: string;
@@ -180,21 +151,11 @@ export const PlayerBar: React.FC = () => {
     time?: string;
   }
 
-  const isSeekable = Boolean(
-    currentTrack && !currentTrack.isLive && duration > 0,
-  );
-  const formatDuration = (sec: number) => {
-    const s = Math.max(0, Math.floor(sec));
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
-  };
-
   const handleShare = async () => {
     if (!currentTrack) return;
     const shareData = {
-      title: currentTrack.title,
-      text: `Estoy escuchando "${currentTrack.title}" de ${currentTrack.artist} en ${config?.site_name || 'Antena Florida'} 📻 🎶`,
+      title: currentTrack?.title || '',
+      text: `Estoy escuchando "${currentTrack?.title || ''}" de ${currentTrack?.artist || ''} en ${config?.site_name || 'Antena Florida'} 📻 🎶`,
       url: window.location.href,
     };
 
@@ -203,8 +164,6 @@ export const PlayerBar: React.FC = () => {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-        // Consider adding a toast notification here instead of alert if possible, 
-        // but alert is fine for now as per previous code.
         alert('Enlace copiado al portapapeles');
       }
     } catch (err) {
@@ -213,53 +172,16 @@ export const PlayerBar: React.FC = () => {
   };
 
 
-  if (!currentTrack) return null;
-
-  if (isPlayerCollapsed) {
-    return (
-      <div 
-        id="player-collapsed-wrapper"
-        className={`player-collapsed-container ${isChatPage ? 'left-4' : 'right-4'} ${isDragging ? 'is-dragging' : ''}`}
-      >
-        <style>{`
-          #player-collapsed-wrapper {
-            --drag-x: ${dragX}px;
-            --drag-y: ${dragY}px;
-          }
-          #player-collapsed-wrapper .player-dynamic-btn {
-            --dynamic-bg-color: rgb(${dynamicRgb});
-          }
-        `}</style>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            // Only open if there was minimal dragging (threshold of 10px) to distinguish click from swipe
-            if (totalMovement < 10) {
-              setIsPlayerCollapsed(false);
-            }
-          }}
-          onMouseDown={handleDragStart}
-          onTouchStart={handleDragStart}
-          className={`p-3 rounded-full shadow-2xl flex items-center gap-2 border border-white/20 player-dynamic-bg player-dynamic-btn ${isDragging ? 'scale-110 cursor-grabbing' : 'hover:scale-110 cursor-grab animate-bounce-in'} ${textContrast}`}
-          title="Mostrar reproductor (Arrastra para mover)"
-        >
-          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-          <Play size={20} fill="currentColor" />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <footer 
       id="player-expanded-wrapper"
-      className="w-full transition-transform duration-300 ease-in-out relative"
+      className="w-full flex justify-center pointer-events-none relative transition-transform duration-300 ease-in-out"
       role="complementary"
       aria-label="Reproductor de audio"
     >
       <style>{`
         #player-expanded-wrapper .player-bg-image {
-          --bg-image-url: url('${getValidImageUrl(currentTrack.image_url)}');
+          --bg-image-url: url('${getValidImageUrl(currentTrack?.image_url)}');
         }
         #player-expanded-wrapper .player-dynamic-bg {
           --dynamic-bg-color: rgb(${dynamicRgb});
@@ -271,316 +193,431 @@ export const PlayerBar: React.FC = () => {
           --progress-percent: ${duration > 0 ? (Math.min(currentTime, duration) / duration) * 100 : 0}%;
         }
         #player-expanded-wrapper .player-volume-input {
-          --volume-percent: ${volume * 100}%;
+          --volume-percent: ${localVolume * 100}%;
         }
       `}</style>
+
+      {/* Bottom sheet: Lista */}
       {showQueue && (
         <div 
-          className="absolute bottom-full left-0 right-0 pb-2"
+          className="fixed inset-0 z-[200] pointer-events-auto"
           role="dialog"
           aria-label={isLiveMode ? "Próximos programas" : "Cola de reproducción"}
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
-                <div>
-                  <div className="text-slate-900 dark:text-white font-black uppercase tracking-widest text-xs">
-                    {isLiveMode ? "A continuación en vivo" : "Cola de reproducción"}
-                  </div>
-                  <div className="text-slate-500 dark:text-white/50 text-xs">
-                    {displayQueue.length} elemento(s)
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!isLiveMode && (
-                    <button
-                      type="button"
-                      onClick={() => clearQueue()}
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white text-xs font-bold hover:bg-slate-200 dark:hover:bg-white/15 transition-colors"
-                      title="Limpiar cola"
-                    >
-                      <Trash2 size={16} />
-                      Limpiar
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowQueue(false)}
-                    className="inline-flex items-center justify-center size-10 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/15 transition-colors"
-                    aria-label="Cerrar cola"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="max-h-64 overflow-y-auto">
-                {displayQueue.length === 0 ? (
-                  <div className="p-6 text-center text-slate-500 dark:text-white/50">
-                    {isLiveMode ? "No hay más programas programados para hoy." : "La cola está vacía."}
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-200 dark:divide-white/10">
-                    {displayQueue.map((t, idx) => {
-                      // For live mode, we don't really have a "playing index" in the future list
-                      // But for normal queue, we highlight current
-                      const active = !isLiveMode && idx === queueIndex;
-                      
-                      return (
-                        <div
-                          key={`${t.title}-${t.artist}-${idx}`}
-                          className={`flex items-center gap-3 px-4 py-3 ${active ? "bg-primary/10" : "hover:bg-slate-50 dark:hover:bg-white/5"} transition-colors`}
+          <div 
+            className="absolute inset-0 bg-transparent"
+            onClick={() => setShowQueue(false)}
+            aria-hidden="true"
+          />
+          {/* Clipping Wrapper */}
+          <div 
+            className="fixed z-[201] overflow-hidden pointer-events-none flex flex-col justify-end"
+            style={{ 
+              bottom: `${sheetRect.bottom}px`, 
+              left: `${sheetRect.left}px`, 
+              width: `${sheetRect.width}px`,
+              height: '85vh'
+            }}
+          >
+            <div 
+              className="flex flex-col max-h-full player-sheet-slide-up pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col flex-1 min-h-0 bg-white/95 dark:bg-card-dark/95 backdrop-blur-2xl rounded-t-[24px] rounded-b-none shadow-2xl border-t border-x border-slate-200 dark:border-white/10 overflow-hidden">
+                <div className="flex-shrink-0 px-4 pt-3 pb-2">
+                  <div className="w-12 h-1 rounded-full bg-slate-300 dark:bg-white/20 mx-auto mb-2" aria-hidden="true" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-slate-900 dark:text-white font-black uppercase tracking-widest text-xs">
+                        {isLiveMode ? "A continuación en vivo" : "Cola de reproducción"}
+                      </div>
+                      <div className="text-slate-500 dark:text-white/50 text-xs">
+                        {displayQueue.length} elemento(s)
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isLiveMode && (
+                        <button
+                          type="button"
+                          onClick={() => clearQueue()}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white text-xs font-bold hover:bg-slate-200 dark:hover:bg-white/15 transition-colors"
+                          title="Limpiar cola"
                         >
-                          <button
-                            type="button"
-                            onClick={() => !isLiveMode && setQueueIndex(idx)}
-                            disabled={isLiveMode}
-                            className={`flex items-center gap-3 min-w-0 flex-1 text-left ${isLiveMode ? 'cursor-default' : ''}`}
-                          >
-                            <div className="size-10 rounded-lg overflow-hidden bg-slate-200 dark:bg-white/10 flex-shrink-0 relative">
-                              <img
-                                src={getValidImageUrl(t.image_url)}
-                                alt={t.title}
-                                className="w-full h-full object-cover"
-                              />
-                               {isLiveMode && (t as QueueItem).time && (
-                                 <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] text-center font-bold">
-                                   {formatTimeStr((t as QueueItem).time, is24h)}
-                                 </div>
-                               )}
-                            </div>
-                            <div className="min-w-0">
-                              <div
-                                className={`font-bold truncate ${active ? "text-primary" : "text-slate-900 dark:text-white"}`}
-                              >
-                                {t.title}
-                              </div>
-                              <div className="text-xs text-slate-500 dark:text-white/50 truncate">
-                                {t.artist}
-                              </div>
-                            </div>
-                          </button>
-                          {!isLiveMode && queue.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeFromQueue(idx)}
-                              className="inline-flex items-center justify-center size-9 rounded-lg text-slate-500 dark:text-white/50 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-red-500 transition-colors"
-                              aria-label="Quitar de la cola"
-                              title="Quitar"
-                            >
-                              <X size={18} />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
+                          <Trash2 size={16} />
+                          Limpiar
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowQueue(false)}
+                        className="inline-flex items-center justify-center size-10 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/15 transition-colors"
+                        aria-label="Cerrar cola"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
                   </div>
-                )}
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  {displayQueue.length === 0 ? (
+                    <div className="p-6 text-center text-slate-500 dark:text-white/50">
+                      {isLiveMode ? "No hay más programas programados para hoy." : "La cola está vacía."}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-200 dark:divide-white/10 pb-safe">
+                      {displayQueue.map((t, idx) => {
+                        const active = !isLiveMode && idx === queueIndex;
+                        const itemWithId = t as QueueItem & { id?: string; slug?: string };
+                        const itemProgramUrl = itemWithId.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemWithId.id)
+                          ? (itemWithId.slug === 'acompaname-tonight' || itemWithId.slug === 'el-fogon-show'
+                              ? `/${itemWithId.slug}`
+                              : `/programa/${itemWithId.slug || itemWithId.id}`)
+                          : null;
+                        return (
+                          <div
+                            key={`${t.title}-${t.artist}-${idx}`}
+                            className={`flex items-center gap-3 px-4 py-3 ${active ? "bg-primary/10" : "hover:bg-slate-50 dark:hover:bg-white/5"} transition-colors`}
+                          >
+                            {isLiveMode && itemProgramUrl ? (
+                              <Link
+                                to={itemProgramUrl}
+                                className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                                onClick={() => setShowQueue(false)}
+                              >
+                                <div className="size-10 rounded-lg overflow-hidden bg-slate-200 dark:bg-white/10 flex-shrink-0 relative">
+                                  <img
+                                    src={getValidImageUrl(t.image_url)}
+                                    alt={t.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {(t as QueueItem).time && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] text-center font-bold">
+                                      {formatTimeStr((t as QueueItem).time!, is24h)}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-bold truncate text-slate-900 dark:text-white">{t.title}</div>
+                                  <div className="text-xs text-slate-500 dark:text-white/50 truncate">{t.artist}</div>
+                                </div>
+                              </Link>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => !isLiveMode && setQueueIndex(idx)}
+                                disabled={isLiveMode}
+                                className={`flex items-center gap-3 min-w-0 flex-1 text-left ${isLiveMode ? 'cursor-default' : ''}`}
+                              >
+                                <div className="size-10 rounded-lg overflow-hidden bg-slate-200 dark:bg-white/10 flex-shrink-0 relative">
+                                  <img
+                                    src={getValidImageUrl(t.image_url)}
+                                    alt={t.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {isLiveMode && (t as QueueItem).time && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] text-center font-bold">
+                                      {formatTimeStr((t as QueueItem).time, is24h)}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div
+                                    className={`font-bold truncate ${active ? "text-primary" : "text-slate-900 dark:text-white"}`}
+                                  >
+                                    {t.title}
+                                  </div>
+                                  <div className="text-xs text-slate-500 dark:text-white/50 truncate">
+                                    {t.artist}
+                                  </div>
+                                </div>
+                              </button>
+                            )}
+                            {!isLiveMode && queue.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeFromQueue(idx)}
+                                className="inline-flex items-center justify-center size-9 rounded-lg text-slate-500 dark:text-white/50 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-red-500 transition-colors"
+                                aria-label="Quitar de la cola"
+                                title="Quitar"
+                              >
+                                <X size={18} />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
-      <div className="bg-white/70 dark:bg-card-dark/70 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 px-4 sm:px-6 py-3 md:py-0 md:h-24 relative shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
-        {/* Collapse & Expand Buttons - Moved to Right */}
-        <div className="absolute -top-4 right-2 sm:right-8 flex items-center gap-1">
-          <button
-            onClick={() => navigate('/player')}
-            className="bg-white dark:bg-card-dark text-slate-500 dark:text-white/50 px-3 py-0.5 rounded-t-lg border-t border-x border-slate-200 dark:border-white/10 hover:text-primary transition-colors shadow-sm flex items-center gap-1"
-            title="Expandir reproductor"
-          >
-            <span className="text-[10px] uppercase font-bold tracking-widest hidden sm:block">
-              Expandir
-            </span>
-            <Maximize2 size={14} />
-          </button>
-          <button
-            onClick={() => setIsPlayerCollapsed(true)}
-            className="bg-white dark:bg-card-dark text-slate-500 dark:text-white/50 px-3 py-0.5 rounded-t-lg border-t border-x border-slate-200 dark:border-white/10 hover:text-primary transition-colors shadow-sm flex items-center gap-1"
-            title="Ocultar reproductor"
-          >
-            <span className="text-[10px] uppercase font-bold tracking-widest hidden sm:block">
-              Ocultar
-            </span>
-            <ChevronDown size={14} />
-          </button>
-        </div>
 
-        <div className="flex items-center justify-between gap-2 md:gap-0">
-          {/* Track Info - Always visible but compact on mobile */}
-          <div className="flex items-center gap-3 md:gap-4 md:w-1/4 min-w-0 flex-1 md:flex-initial">
-            <button 
-              type="button"
-              onClick={() => location.pathname !== '/player' && navigate('/player')}
-              className="flex items-center gap-3 md:gap-4 min-w-0 text-left hover:opacity-80 transition-opacity"
-              aria-label={`Ver detalles de ${currentTrack.title} por ${currentTrack.artist}`}
+      {/* Bottom sheet: Detalles del programa */}
+      {showProgramDetails && (
+        <div 
+          className="fixed inset-0 z-[200] pointer-events-auto"
+          role="dialog"
+          aria-label="Detalles del programa"
+        >
+          <div 
+            className="absolute inset-0 bg-transparent"
+            onClick={() => setShowProgramDetails(false)}
+            aria-hidden="true"
+          />
+          {/* Clipping Wrapper */}
+          <div 
+            className="fixed z-[201] overflow-hidden pointer-events-none flex flex-col justify-end"
+            style={{ 
+              bottom: `${sheetRect.bottom}px`, 
+              left: `${sheetRect.left}px`, 
+              width: `${sheetRect.width}px`,
+              height: '85vh'
+            }}
+          >
+            <div 
+              className="flex flex-col max-h-full player-sheet-slide-up pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className={`relative size-10 sm:size-14 rounded-lg flex-shrink-0 group ${isPlaying ? 'animate-playing-pulse' : ''}`}>
-                <div className="player-bg-image" />
+              <div className="flex flex-col flex-1 min-h-0 bg-white/95 dark:bg-card-dark/95 backdrop-blur-2xl rounded-t-[24px] rounded-b-none shadow-2xl border-t border-x border-slate-200 dark:border-white/10 overflow-hidden">
+                <div className="flex-shrink-0 px-3 pt-2 pb-1.5">
+                  <div className="w-10 h-0.5 rounded-full bg-slate-300 dark:bg-white/20 mx-auto mb-1.5" aria-hidden="true" />
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-slate-900 dark:text-white font-bold uppercase tracking-wider text-xs">
+                      Detalles
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowProgramDetails(false)}
+                      className="inline-flex items-center justify-center size-8 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-white/15 transition-colors"
+                      aria-label="Cerrar"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pb-4 pb-safe">
+                  <div className="flex flex-col items-center gap-2 py-2">
+                    <div className="size-16 sm:size-20 rounded-xl overflow-hidden bg-slate-200 dark:bg-white/10 flex-shrink-0 shadow-lg">
+                      <img
+                        src={getValidImageUrl(currentTrack?.image_url)}
+                        alt={currentTrack?.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="text-center">
+                      <h4 className="text-base font-bold text-slate-900 dark:text-white line-clamp-2">
+                        {currentTrack?.title}
+                      </h4>
+                      <p className="text-slate-500 dark:text-white/50 text-xs mt-0.5">
+                        {displayArtist}
+                      </p>
+                    </div>
+                    {currentShow?.description && (
+                      <p className="text-slate-600 dark:text-white/70 text-xs text-center max-w-md line-clamp-3">
+                        {currentShow.description}
+                      </p>
+                    )}
+                    {currentShow && (currentShow.time || currentShow.end_time) && (
+                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-white/50 text-[11px]">
+                        {currentShow.time && <span>{formatTimeStr(currentShow.time, is24h)}</span>}
+                        {currentShow.time && currentShow.end_time && <span>–</span>}
+                        {currentShow.end_time && <span>{formatTimeStr(currentShow.end_time, is24h)}</span>}
+                      </div>
+                    )}
+                    {programPageUrl && (
+                      <Link
+                        to={programPageUrl}
+                        onClick={() => setShowProgramDetails(false)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all hover:scale-105 player-dynamic-bg"
+                        style={{ backgroundColor: `rgb(${dynamicRgb})` }}
+                      >
+                        <ExternalLink size={14} />
+                        Ir al programa
+                      </Link>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="overflow-hidden min-w-0 flex flex-col">
-                <h4 className="font-bold truncate text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
-                  {currentTrack.title}
-                </h4>
-                <p className="text-slate-500 dark:text-white/50 text-[10px] sm:text-xs font-mono uppercase tracking-tighter truncate">
-                  {currentTrack.artist}
-                </p>
-              </div>
-            </button>
-            
-            {currentTrack.artist && currentTrack.artist !== 'Radio En Vivo' && (
-              <a 
-                href={`https://www.google.com/search?q=${encodeURIComponent(currentTrack.artist + " artist musician biography discography")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-flex items-center justify-center size-4 rounded-full transition-all flex-shrink-0 player-dynamic-bg ${textContrast}`}
-                title={`Búsqueda Inteligente de ${currentTrack.artist}`}
-              >
-                <Info className="size-2.5" />
-              </a>
-            )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mini Toggle Button when hidden */}
+      {isPlayerCollapsed && currentTrack && (
+        <button
+          onClick={() => setIsPlayerCollapsed(false)}
+          className="pointer-events-auto fixed bottom-[calc(64px+42px+env(safe-area-inset-bottom))] xl:bottom-8 right-8 size-12 sm:size-14 rounded-full bg-primary text-background-dark shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-[200] group overflow-hidden"
+          title="Mostrar reproductor"
+        >
+          <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Music className={`size-6 sm:size-7 ${isPlaying ? 'animate-bounce' : ''}`} />
+        </button>
+      )}
+
+      <div
+        ref={barRef}
+        className={`pointer-events-auto w-[88%] sm:w-[72%] max-w-2xl border border-slate-200 dark:border-white/10 px-2.5 sm:px-3 py-1 shadow-2xl flex items-center transition-all duration-500 ease-out ${
+           isPlayerCollapsed 
+             ? 'translate-y-32 opacity-0 pointer-events-none backdrop-blur-none bg-transparent' 
+             : 'translate-y-0 opacity-100 backdrop-blur-xl bg-white/80 dark:bg-card-dark/90'
+        } ${
+          sheetOpen ? 'rounded-t-none rounded-b-[24px] border-t-transparent' : 'rounded-full'
+        }`}
+      >
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3 w-full min-w-0">
+          {/* Info */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <button
               type="button"
-              aria-label="Share"
-              onClick={handleShare}
-              className="hidden sm:inline-flex items-center justify-center size-11 rounded-full transition-colors text-slate-500 dark:text-white/50 hover:text-white flex-shrink-0"
+              onClick={() => setShowProgramDetails(true)}
+              className={`relative size-8 sm:size-10 rounded-lg flex-shrink-0 group overflow-hidden ${isPlaying && !isPlayerCollapsed ? 'animate-playing-pulse' : ''} focus:outline-none focus:ring-2 focus:ring-primary/50`}
+              aria-label="Ver detalles del programa"
             >
-              <Share2 size={20} />
+              <div className="player-bg-image" />
             </button>
+            <div className="overflow-hidden min-w-0 flex flex-col">
+              <h4 className="font-bold truncate text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
+                {currentTrack?.title}
+              </h4>
+              <p className="text-slate-500 dark:text-white/50 text-[9px] sm:text-[10px] font-mono uppercase tracking-tighter truncate">
+                {displayArtist}
+              </p>
+            </div>
             
-            {/* Live Video Buttons */}
-            {(currentShow?.youtube_live_url || currentShow?.facebook_live_url) && currentTrack.isLive && (
-              <div className="flex items-center gap-2 mr-2">
-                {currentShow.youtube_live_url && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setVideoModal({ 
-                        isOpen: true, 
-                        url: currentShow.youtube_live_url || '', 
-                        title: `YouTube Live`
-                      });
-                    }}
-                    className="flex items-center justify-center size-8 sm:size-10 bg-red-600 hover:bg-red-700 text-white rounded-full transition-transform hover:scale-105 animate-pulse shadow-lg flex-shrink-0"
-                    title="Ver en YouTube Live"
-                  >
-                    <Youtube size={16} className="sm:w-[18px] sm:h-[18px]" />
-                  </button>
-                )}
-                {currentShow.facebook_live_url && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setVideoModal({ 
-                        isOpen: true, 
-                        url: currentShow.facebook_live_url || '', 
-                        title: `Facebook Live`
-                      });
-                    }}
-                    className="flex items-center justify-center size-8 sm:size-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-transform hover:scale-105 animate-pulse shadow-lg flex-shrink-0"
-                    title="Ver en Facebook Live"
-                  >
-                    <Facebook size={16} className="sm:w-[18px] sm:h-[18px]" />
-                  </button>
-                )}
+            {/* Live Stats Indicators */}
+            <div className="hidden xl:flex items-center gap-2 ml-4 border-l border-slate-200 dark:border-white/10 pl-4 h-6">
+              <div className="flex items-center gap-1" title={`${listenerCount} oyentes en vivo`}>
+                <Radio size={10} className="text-primary animate-pulse" />
+                <span className="text-[10px] font-black text-slate-700 dark:text-white/80">{listenerCount}</span>
               </div>
-            )}
+              <div className="flex items-center gap-1" title={`${onlineCount} personas en línea`}>
+                <Users size={10} className="text-slate-400" />
+                <span className="text-[10px] font-bold text-slate-500 dark:text-white/40">{onlineCount}</span>
+              </div>
+              <Link to="/chat" className="flex items-center gap-1 hover:text-primary transition-colors" title={`${chatMessageCount} mensajes en el chat`}>
+                <MessageSquare size={10} className="text-slate-400" />
+                <span className="text-[10px] font-bold text-slate-500 dark:text-white/40">{chatMessageCount}</span>
+              </Link>
+            </div>
+            {!isGenericArtist && !isGenericProgram && currentTrack.artist ? (
+                <a 
+                  href={`https://www.google.com/search?q=${encodeURIComponent(currentTrack.artist + " artist musician biography discography")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex items-center justify-center size-4 sm:size-5 rounded-full transition-all flex-shrink-0 player-dynamic-bg ${textContrast}`}
+                  title={`Búsqueda Inteligente de ${currentTrack.artist}`}
+                >
+                  <Info className="size-2.5 sm:size-3" />
+              </a>
+            ) : null}
           </div>
 
-          {/* Controls - Center */}
-          <div className="flex flex-col items-center gap-2 md:w-2/4 flex-shrink-0">
-            <div className="flex items-center gap-3 sm:gap-6">
-              <button
+          {/* Controls */}
+          <div className="flex items-center justify-center shrink-0">
+            <button
+              type="button"
+              aria-label={isPlaying ? "Pause" : "Play"}
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlay();
+              }}
+              className={`size-9 sm:size-10 rounded-full flex items-center justify-center hover:scale-110 transition-all active:scale-95 player-dynamic-bg ${textContrast}`}
+            >
+              {isPlaying ? (
+                <Pause className="fill-current" size={16} />
+              ) : (
+                <Play className="fill-current ml-0.5" size={16} />
+              )}
+            </button>
+          </div>
+
+          {/* Volume & More */}
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 flex-shrink-0 min-w-0">
+            <div className="hidden sm:flex items-center gap-1.5 px-1 truncate">
+              <button 
                 type="button"
-                aria-label={isPlaying ? "Pause" : "Play"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlay();
-                }}
-                className={`size-10 sm:size-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform player-dynamic-bg ${textContrast}`}
+                onClick={toggleMute}
+                className="hover:scale-110 transition-transform active:scale-95 p-1"
+                aria-label={localVolume === 0 ? "Activar sonido" : "Desactivar sonido"}
               >
-                {isPlaying ? (
-                  <Pause className="fill-current" size={20} />
+                {localVolume === 0 ? (
+                  <VolumeX className="text-red-500" size={16} />
                 ) : (
-                  <Play className="fill-current ml-1" size={20} />
+                  <Volume2 className="text-slate-400 dark:text-white/60" size={16} />
                 )}
               </button>
-            </div>
-
-             {/* Progress Bar - Visible on all screens now */}
-            <div className={`flex w-full items-center ${currentTrack.isLive ? 'px-2 sm:px-4' : 'gap-3 px-2 sm:px-4'}`}>
-              {currentTrack.isLive ? (
-                  <div 
-                    className="w-full h-6 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden relative flex items-center justify-center border border-slate-200/50 dark:border-white/5"
-                    role="progressbar"
-                    {...{ 
-                      'aria-valuenow': ariaLiveProgress, 
-                      'aria-valuemin': 0, 
-                      'aria-valuemax': 100 
-                    }}
-                    aria-label="Progreso del programa en vivo"
-                  >
-                    <div className="player-progress-fill player-dynamic-bg" />
-                    <span className="relative z-10 text-[10px] font-black tracking-[0.3em] text-primary animate-pulse ml-[0.3em]">
-                      LIVE
-                    </span>
-                  </div>
-              ) : (
-                  <>
-                     <span className="text-[10px] font-mono text-slate-500 dark:text-white/40 min-w-[32px] text-right">
-                      {formatDuration(currentTime)}
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={duration || 0}
-                      step={0.1}
-                      value={Math.min(currentTime, duration || 0)}
-                      onChange={(e) => seekTo(parseFloat(e.target.value))}
-                      disabled={!isSeekable}
-                      aria-label="Progreso de la reproducción"
-                      className={`player-slider-input player-dynamic-bg ${isSeekable ? "" : "opacity-60 cursor-not-allowed"}`}
-                    />
-                    <span className="text-[10px] font-mono text-slate-500 dark:text-white/40 min-w-[32px]">
-                      {duration > 0 ? formatDuration(duration) : "--:--"}
-                    </span>
-                  </>
-              )}
-            </div>
-          </div>
-
-          {/* Volume & Extras */}
-          <div className="flex items-center justify-end gap-1 sm:gap-4 md:w-1/4 flex-initial">
-
-
-            <div className="hidden lg:flex gap-1 items-end h-[22px] pb-[1px] px-4 mr-1 border-r border-slate-200 dark:border-white/10">
-              <Equalizer isPlaying={isPlaying} className="h-full" color={`rgb(${dynamicRgb})`} />
-            </div>
-
-            <div className="hidden sm:flex items-center gap-3 group">
-              <Volume2
-                className="text-slate-400 dark:text-white/60"
-                size={20}
-              />
               <input
                 type="range"
                 min="0"
                 max="1"
                 step="0.01"
-                value={volume}
-                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                value={localVolume}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setLocalVolume(v);
+                  commitVolume(v);
+                }}
+                onPointerUp={(e) => {
+                  const v = parseFloat((e.currentTarget as HTMLInputElement).value);
+                  if (volumeSyncTimeout.current) clearTimeout(volumeSyncTimeout.current);
+                  volumeSyncTimeout.current = null;
+                  setVolume(v);
+                }}
                 aria-label="Volumen"
-                className="player-volume-input player-dynamic-bg"
+                className="player-volume-input player-dynamic-bg w-14"
               />
             </div>
 
             <button
               type="button"
-              aria-label="Queue"
               onClick={() => setShowQueue(!showQueue)}
-              className={`p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors ${showQueue ? "text-primary" : "text-slate-400 dark:text-white/60"}`}
+              className={`p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors ${showQueue ? "text-primary" : "text-slate-400 dark:text-white/60"}`}
+              aria-label="Cola"
             >
-              <ListMusic size={20} />
+              <ListMusic size={16} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShare}
+              className="hidden lg:inline-flex items-center justify-center size-7 sm:size-8 rounded-full transition-colors text-slate-500 dark:text-white/50 hover:bg-slate-100 dark:hover:bg-white/10 flex-shrink-0"
+              aria-label="Compartir"
+            >
+              <Share2 size={14} />
+            </button>
+
+            <Link
+              to="/chat"
+              className={`p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors ${location.pathname === '/chat' ? 'text-primary' : 'text-slate-400 dark:text-white/60'}`}
+              aria-label="Chat en Vivo"
+              title="Abrir Chat en Vivo"
+            >
+              <div className="relative">
+                <MessageSquare size={16} />
+                {chatMessageCount > 0 && (
+                  <span className="absolute -top-1 -right-1 size-3 bg-primary text-background-dark text-[8px] font-black flex items-center justify-center rounded-full ring-2 ring-white dark:ring-card-dark">
+                    {chatMessageCount > 99 ? '+' : chatMessageCount}
+                  </span>
+                )}
+              </div>
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowQueue(false);
+                setShowProgramDetails(false);
+                setIsPlayerCollapsed(true);
+              }}
+              className="p-1 rounded-full text-slate-400 dark:text-white/50 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-primary transition-all active:scale-95"
+              title="Ocultar reproductor"
+              aria-label="Ocultar"
+            >
+              <ChevronDown size={18} />
             </button>
           </div>
         </div>

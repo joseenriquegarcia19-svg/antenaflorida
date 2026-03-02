@@ -15,6 +15,7 @@ import {
 import { XIcon } from './icons/XIcon';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { SponsorBanner } from './SponsorBanner';
+import { isVideo } from '@/lib/utils';
 import versionData from '../../version.json';
 import { Logo } from './ui/Logo';
 
@@ -31,20 +32,22 @@ const Footer: React.FC = () => {
         <div className="mb-12">
           <SponsorBanner location="footer_ad" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
           
           {/* Brand & About */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-2">
-              <div className="size-12 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+              <div className={`size-12 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 ${
+                isVideo(config?.logo_url) ? 'bg-white/5 border border-white/10' : 'bg-transparent border-0'
+              }`}>
                 <Logo />
               </div>
               <div className="flex flex-col">
-                <div className="text-2xl font-black tracking-tighter uppercase italic">
+                <div className="text-2xl font-black italic tracking-tighter uppercase" style={{ fontFamily: '"Montserrat", "Helvetica Neue", Arial, sans-serif' }}>
                   {config?.site_name ? (
                     <>
-                      {config.site_name.split(' ').map((word, i, arr) => (
-                        <span key={i} className={i === arr.length - 1 ? 'text-primary-orange' : 'text-primary'}>
+                      {config.site_name.split(' ').map((word, i) => (
+                        <span key={i} className={word.toLowerCase() === 'florida' ? 'text-primary-orange' : 'text-primary'}>
                           {word}{' '}
                         </span>
                       ))}
@@ -53,7 +56,7 @@ const Footer: React.FC = () => {
                     <><span className="text-primary">ANTENA</span> <span className="text-primary-orange">FLORIDA</span></>
                   )}
                 </div>
-                <span className="text-xs font-bold text-primary tracking-widest uppercase">
+                <span className="text-[10px] font-bold text-primary tracking-[0.2em] uppercase mt-1" style={{ fontFamily: '"Montserrat", "Helvetica Neue", Arial, sans-serif' }}>
                   {slogan}
                 </span>
               </div>
@@ -91,17 +94,6 @@ const Footer: React.FC = () => {
             </div>
           </div>
 
-          {/* Legal */}
-          <div>
-            <h3 className="text-lg font-bold uppercase tracking-widest mb-6 text-primary">Legal</h3>
-            <div className="flex flex-col space-y-3 text-sm">
-              <FooterLink to="/privacidad">Política de Privacidad</FooterLink>
-              <FooterLink to="/terminos">Términos y Condiciones</FooterLink>
-              <FooterLink to="/preguntas-frecuentes">Preguntas Frecuentes</FooterLink>
-              <FooterLink to="/mapa-del-sitio">Mapa del Sitio</FooterLink>
-            </div>
-          </div>
-
           {/* Contact & Info */}
           <div>
             <h3 className="text-lg font-bold uppercase tracking-widest mb-6 text-primary">Contacto</h3>
@@ -125,20 +117,11 @@ const Footer: React.FC = () => {
                 </li>
               )}
             </ul>
-            
-            <div className="mt-8 pt-6 border-t border-white/10">
-               <div className="flex items-center gap-2 text-white/40 text-xs font-mono uppercase tracking-widest">
-                  <Clock size={14} className="text-primary" />
-                  <span>Versión: {versionData.version}</span>
-               </div>
-            </div>
           </div>
         </div>
 
-        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
+        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-white/40">
           <div className="flex flex-col md:flex-row items-center gap-2 text-center md:text-left">
-            <p>{siteName}&trade; {currentYear}. Todos los derechos reservados.</p>
-            <span className="hidden md:inline">•</span>
             <p>
               Sitio creado por <a href="https://www.jegromanweb.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold">www.jegromanweb.com</a>
             </p>
@@ -147,9 +130,11 @@ const Footer: React.FC = () => {
                {siteName}, ELIOS'S STUDIO {currentYear}
             </p>
           </div>
-          <div className="flex gap-6 items-center">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6 items-center">
             <Link to="/privacidad" className="hover:text-white transition-colors">Privacidad</Link>
             <Link to="/terminos" className="hover:text-white transition-colors">Términos</Link>
+            <Link to="/preguntas-frecuentes" className="hover:text-white transition-colors">Preguntas</Link>
+            <Link to="/mapa-del-sitio" className="hover:text-white transition-colors">Mapa</Link>
             <button 
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
               className="flex items-center gap-1 hover:text-white transition-colors text-primary font-bold uppercase tracking-widest ml-2"

@@ -12,7 +12,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('theme') as Theme | null;
@@ -28,14 +28,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.remove('light', 'dark', 'valentine');
     root.classList.add(theme);
     
-    // For 'valentine' theme, we use light mode as base for now, or handle specifically
     const colorScheme = theme === 'dark' ? 'dark' : 'light';
     root.style.colorScheme = colorScheme;
     
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Sincronizar con cambios en otras pestañas
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'theme') {
@@ -51,10 +49,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTheme = () => {
     setTheme((prev) => {
-      // Only toggle between light and dark for the public toggle.
-      // Valentine theme is only activatable from the admin dashboard via setTheme('valentine').
       if (prev === 'dark') return 'light';
-      return 'dark'; // from 'light' or 'valentine', go to dark
+      return 'dark';
     });
   };
 
@@ -67,14 +63,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
+};
 
-export function useTheme() {
+export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (context === undefined) {
     throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
-}
+};
 
 export const useThemeContext = useTheme;

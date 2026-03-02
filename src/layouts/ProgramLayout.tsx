@@ -14,7 +14,7 @@ export { ProgramContext } from '@/contexts/ProgramContext';
 
 const ProgramLayoutContent: React.FC = () => {
   const [isMediaMenuOpen, setIsMediaMenuOpen] = useState(false);
-  const { currentTrack } = usePlayer();
+  const { currentTrack, isPlayerCollapsed } = usePlayer();
   const { programColor } = useProgram();
 
   return (
@@ -23,11 +23,18 @@ const ProgramLayoutContent: React.FC = () => {
         <Outlet />
       </main>
       
-      {currentTrack && (
-        <div className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] xl:bottom-0 z-[100] transition-all duration-300">
-          <PlayerBar />
-        </div>
-      )}
+      <div
+        id="player-expanded-wrapper"
+        className={`fixed bottom-0 left-0 right-0 z-[100] pointer-events-none pb-[calc(104px+env(safe-area-inset-bottom))] xl:pb-12 transition-all duration-500 ${
+          currentTrack
+            ? isPlayerCollapsed
+              ? 'translate-y-4 shadow-none'
+              : 'translate-y-0 opacity-100'
+            : 'translate-y-full opacity-0 invisible'
+        }`}
+      >
+        <PlayerBar />
+      </div>
 
       <ProgramBottomMenu
         programColor={programColor}

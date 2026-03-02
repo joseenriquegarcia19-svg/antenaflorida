@@ -1,15 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { Sun, CloudRain, Cloud, CloudSnow, CloudLightning, Wind, MapPin } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Sun, Moon, CloudRain, Cloud, CloudSnow, CloudLightning, Wind, MapPin } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWeather } from '@/contexts/WeatherContext';
 
+// Day = 6:00–19:59, Night = 20:00–5:59 (same time as displayed in widget)
+function isNightTime(date: Date): boolean {
+  const hour = date.getHours();
+  return hour >= 20 || hour < 6;
+}
+
 export const WeatherWidget: React.FC = () => {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(() => new Date());
   const { locationName, weather, isLoading, unit, toggleUnit } = useWeather();
   const { user } = useAuth();
   const is24h = user?.accessibility_settings?.time_format === '24h';
 
-  // Time update
+  const isNight = useMemo(() => isNightTime(time), [time]);
+
+  // Time update every second so clock and day/night stay in sync
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -21,30 +29,34 @@ export const WeatherWidget: React.FC = () => {
   };
 
   const getWeatherIconComponent = (className: string = "w-8 h-8", strokeWidth: number = 2) => {
-    if (!weather) return <Sun className={`${className} text-yellow-400`} strokeWidth={strokeWidth} />;
-    
+    if (!weather) {
+      return isNight ? <Moon className={`${className} text-slate-300`} strokeWidth={strokeWidth} /> : <Sun className={`${className} text-yellow-400`} strokeWidth={strokeWidth} />;
+    }
     const desc = weather.desc.toLowerCase();
     if (desc.includes('llov') || desc.includes('lluvia')) return <CloudRain className={`${className} text-blue-400`} strokeWidth={strokeWidth} />;
     if (desc.includes('nublado') || desc.includes('cubierto') || desc.includes('nubes')) return <Cloud className={`${className} text-slate-300`} strokeWidth={strokeWidth} />;
     if (desc.includes('nieve')) return <CloudSnow className={`${className} text-white`} strokeWidth={strokeWidth} />;
     if (desc.includes('tormenta')) return <CloudLightning className={`${className} text-yellow-500`} strokeWidth={strokeWidth} />;
     if (desc.includes('viento')) return <Wind className={`${className} text-slate-400`} strokeWidth={strokeWidth} />;
-    
-    return <Sun className={`${className} text-yellow-400 animate-spin-slow`} strokeWidth={strokeWidth} />;
+    if (desc.includes('despejado') || desc.includes('sol') || desc.includes('soleado')) {
+      if (isNight) return <Moon className={`${className} text-slate-300`} strokeWidth={strokeWidth} />;
+      return <Sun className={`${className} text-yellow-400`} strokeWidth={strokeWidth} />;
+    }
+    return isNight ? <Moon className={`${className} text-slate-300`} strokeWidth={strokeWidth} /> : <Sun className={`${className} text-yellow-400`} strokeWidth={strokeWidth} />;
   };
 
   const getWeatherStyles = () => {
-    if (!weather) return 'from-slate-900 to-slate-800';
-    
+    if (!weather) return isNight ? 'from-slate-950 via-slate-900 to-slate-950' : 'from-slate-900 to-slate-800';
     const desc = weather.desc.toLowerCase();
     if (desc.includes('llov') || desc.includes('lluvia')) return 'from-slate-900 via-blue-900 to-slate-900';
     if (desc.includes('nublado') || desc.includes('cubierto') || desc.includes('nubes')) return 'from-slate-800 via-slate-700 to-slate-900';
     if (desc.includes('nieve')) return 'from-slate-400 via-slate-300 to-slate-500';
     if (desc.includes('tormenta')) return 'from-indigo-950 via-purple-950 to-black';
     if (desc.includes('viento')) return 'from-teal-900 via-slate-800 to-slate-900';
-    if (desc.includes('despejado') || desc.includes('sol')) return 'from-sky-500 via-blue-600 to-blue-800';
-    
-    return 'from-slate-900 to-slate-800';
+    if (desc.includes('despejado') || desc.includes('sol') || desc.includes('soleado')) {
+      return isNight ? 'from-indigo-950 via-slate-900 to-slate-950' : 'from-sky-500 via-blue-600 to-blue-800';
+    }
+    return isNight ? 'from-slate-950 via-slate-900 to-slate-950' : 'from-slate-900 to-slate-800';
   };
 
   const isRain = weather?.desc.toLowerCase().includes('lluvia') || weather?.desc.toLowerCase().includes('llov');
@@ -64,82 +76,88 @@ export const WeatherWidget: React.FC = () => {
         {/* Dynamic Weather Background Effects - PRO Animations */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {isRain ? (
-            <div className="absolute inset-0 opacity-40">
+            <div className="absolute inset-0 opacity-40 overflow-hidden">
                {[...Array(20)].map((_, i) => (
                  <div 
                    key={`rain-${i}`} 
                    className="absolute bg-gradient-to-b from-transparent to-blue-200 w-[2px] rounded-full animate-weather-rain"
                    style={{ 
-                     height: `${30 + Math.random() * 30}px`,
-                     left: `${Math.random() * 100}%`, 
-                     top: `-${Math.random() * 20}%`,
-                     animationDelay: `${Math.random() * 2}s`,
-                     animationDuration: `${0.4 + Math.random() * 0.4}s`,
-                     opacity: 0.3 + Math.random() * 0.7
+                     height: `${28 + (i % 5) * 8}px`,
+                     left: `${(i * 13) % 100}%`,
+                     top: '-10%',
+                     animationDelay: `${(i * 0.15) % 2}s`,
+                     animationDuration: `${0.6 + (i % 3) * 0.2}s`,
+                     opacity: 0.4 + (i % 4) * 0.15
                    }}
                  />
                ))}
             </div>
           ) : isSnow ? (
-            <div className="absolute inset-0 opacity-60">
+            <div className="absolute inset-0 opacity-60 overflow-hidden">
                {[...Array(15)].map((_, i) => (
                  <div 
                    key={`snow-${i}`} 
                    className="absolute bg-white rounded-full animate-weather-snow shadow-[0_0_5px_rgba(255,255,255,0.8)]"
                    style={{ 
-                     width: `${4 + Math.random() * 5}px`,
-                     height: `${4 + Math.random() * 5}px`,
-                     left: `${Math.random() * 100}%`, 
-                     top: `-${Math.random() * 20}%`,
-                     animationDelay: `${Math.random() * 5}s`,
-                     animationDuration: `${3 + Math.random() * 4}s`,
-                     opacity: 0.4 + Math.random() * 0.6
+                     width: `${4 + (i % 4)}px`,
+                     height: `${4 + (i % 4)}px`,
+                     left: `${(i * 11) % 100}%`,
+                     top: '-5%',
+                     animationDelay: `${(i * 0.3) % 5}s`,
+                     animationDuration: `${3.5 + (i % 3)}s`,
+                     opacity: 0.5 + (i % 3) * 0.15
                    }}
                  />
                ))}
             </div>
           ) : isCloudy ? (
-            <div className="absolute inset-0 opacity-50">
+            <div className="absolute inset-0 opacity-50 overflow-hidden">
                {[...Array(4)].map((_, i) => (
                  <div 
                    key={`cloud-${i}`} 
                    className="absolute bg-white/20 blur-[50px] rounded-[100%] animate-weather-cloud"
                    style={{ 
-                     width: `${200 + Math.random() * 200}px`,
-                     height: `${100 + Math.random() * 100}px`,
-                     left: `${-20 + (i * 30)}%`, 
-                     top: `${Math.random() * 40}%`,
-                     animationDelay: `${i * 2}s`,
-                     animationDuration: `${20 + Math.random() * 10}s`
+                     width: `${220 + i * 40}px`,
+                     height: `${80 + i * 30}px`,
+                     left: `${-15 + i * 28}%`,
+                     top: `${10 + i * 8}%`,
+                     animationDelay: `${i * 2.5}s`,
+                     animationDuration: '25s'
                    }}
                  />
                ))}
             </div>
           ) : isStorm ? (
-              <div className="absolute inset-0">
-                {/* Heavy rain */}
+              <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute inset-0 opacity-50">
                    {[...Array(25)].map((_, i) => (
                      <div 
                        key={`storm-rain-${i}`} 
                        className="absolute bg-gradient-to-b from-transparent to-slate-300 w-[2px] rounded-full animate-weather-rain"
                        style={{ 
-                         height: `${40 + Math.random() * 40}px`,
-                         left: `${Math.random() * 100}%`, 
-                         animationDelay: `${Math.random()}s`,
-                         animationDuration: `${0.3 + Math.random() * 0.3}s`,
+                         height: `${35 + (i % 4) * 12}px`,
+                         left: `${(i * 9) % 100}%`,
+                         top: '-10%',
+                         animationDelay: `${(i * 0.08) % 1.5}s`,
+                         animationDuration: `${0.35 + (i % 3) * 0.15}s`,
                          transform: 'rotate(10deg)'
                        }}
                      />
                    ))}
                 </div>
-                {/* Lightning flashes */}
                 <div className="absolute inset-0 bg-white mix-blend-overlay animate-weather-lightning pointer-events-none" />
              </div>
-          ) : isClear ? (
+          ) : isClear && !isNight ? (
             <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-[20%] -right-[10%] w-[120%] h-[120%] bg-gradient-radial from-yellow-300/20 to-transparent animate-weather-sun rounded-full blur-3xl" />
+                <div 
+                  className="absolute -top-[20%] -right-[10%] w-[120%] h-[120%] animate-weather-sun rounded-full blur-3xl" 
+                  style={{ background: 'radial-gradient(ellipse at 80% 20%, rgba(253,224,71,0.25) 0%, transparent 60%)' }} 
+                />
                 <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/30 rounded-full blur-[60px] animate-pulse-slow" />
+            </div>
+          ) : isClear && isNight ? (
+            <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute top-[15%] right-[15%] w-32 h-32 bg-slate-300/15 rounded-full blur-2xl" aria-hidden />
             </div>
           ) : null}
         </div>

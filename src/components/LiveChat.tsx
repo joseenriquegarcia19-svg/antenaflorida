@@ -9,6 +9,7 @@ import data from '@emoji-mart/data';
 import { Link } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
+import { isVideo } from '@/lib/utils';
 import { Logo } from '@/components/ui/Logo';
 
 import { useLiveStats } from '@/contexts/LiveStatsContext';
@@ -58,7 +59,7 @@ const CUBA_MIAMI_EMOJIS = [
 
 export const LiveChat: React.FC<LiveChatProps> = ({ showId, showTitle, startTimestamp, endTimestamp, showSlug, teamMembers }) => {
   const { user } = useAuth();
-  const { chatCount } = useLiveStats();
+  const { onlineCount, chatMessageCount } = useLiveStats();
   const { theme, toggleTheme } = useTheme();
   const { config } = useSiteConfig();
   const { toast } = useToast();
@@ -810,7 +811,9 @@ export const LiveChat: React.FC<LiveChatProps> = ({ showId, showTitle, startTime
             <ArrowLeft size={16} className="sm:size-[18px]" />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="size-8 sm:size-10 rounded-full overflow-hidden bg-white/40 dark:bg-white/20 border border-black/10 dark:border-white/20 flex items-center justify-center shadow-sm shrink-0">
+            <div className={`size-8 sm:size-10 rounded-full overflow-hidden flex items-center justify-center shadow-sm shrink-0 ${
+              isVideo(config?.logo_url) ? 'bg-white/40 dark:bg-white/20 border border-black/10 dark:border-white/20' : 'bg-transparent border-0'
+            }`}>
                <Logo className="w-full h-full object-cover" />
             </div>
             <div className="hidden lg:flex flex-col min-w-0">
@@ -874,11 +877,11 @@ export const LiveChat: React.FC<LiveChatProps> = ({ showId, showTitle, startTime
                 )}
 
                 <div className="flex items-center gap-1.5 sm:gap-2 ml-1 shrink-0">
-                  <span className="flex items-center gap-0.5 sm:gap-1 text-[7px] sm:text-[8px] font-black bg-black/5 dark:bg-white/5 px-1.5 sm:px-2 py-0.5 rounded-full text-slate-500 dark:text-white/40">
-                    <Users size={8} className="sm:size-2.5" /> {chatCount}
+                  <span className="flex items-center gap-0.5 sm:gap-1 text-[7px] sm:text-[8px] font-black bg-black/5 dark:bg-white/5 px-1.5 sm:px-2 py-0.5 rounded-full text-slate-500 dark:text-white/40" title="Personas en línea">
+                    <Users size={8} className="sm:size-2.5" /> {onlineCount}
                   </span>
-                  <span className="flex items-center gap-0.5 sm:gap-1 text-[7px] sm:text-[8px] font-black bg-black/5 dark:bg-white/5 px-1.5 sm:px-2 py-0.5 rounded-full text-slate-500 dark:text-white/40">
-                    <MessageCircle size={8} className="sm:size-2.5" /> {useLiveStats().chatMessageCount}
+                  <span className="flex items-center gap-0.5 sm:gap-1 text-[7px] sm:text-[8px] font-black bg-black/5 dark:bg-white/5 px-1.5 sm:px-2 py-0.5 rounded-full text-slate-500 dark:text-white/40" title="Mensajes en el chat">
+                    <MessageCircle size={8} className="sm:size-2.5" /> {chatMessageCount}
                   </span>
                   {timeLeft && (
                      <span className="text-[7px] sm:text-[8px] font-black text-primary bg-primary/10 px-1.5 sm:px-2 py-0.5 rounded-full border border-primary/20 animate-pulse whitespace-nowrap hidden sm:inline-block">

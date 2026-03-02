@@ -22,7 +22,7 @@ const defaultState: AdminHeaderState = {
 
 const AdminHeaderContext = createContext<AdminHeaderContextType | undefined>(undefined);
 
-export function AdminHeaderProvider({ children }: { children: ReactNode }) {
+export const AdminHeaderProvider = ({ children }: { children: ReactNode }) => {
   const [header, setHeaderState] = useState<AdminHeaderState>(defaultState);
 
   const setHeader = useCallback((state: AdminHeaderState) => {
@@ -44,12 +44,12 @@ export function AdminHeaderProvider({ children }: { children: ReactNode }) {
       {children}
     </AdminHeaderContext.Provider>
   );
-}
+};
 
-export function useAdminHeader() {
+export const useAdminHeader = () => {
   const context = useContext(AdminHeaderContext);
   if (context === undefined) {
     throw new Error('useAdminHeader must be used within an AdminHeaderProvider');
   }
   return context;
-}
+};

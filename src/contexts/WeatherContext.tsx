@@ -25,7 +25,7 @@ export const useWeather = () => {
   return context;
 };
 
-export const WeatherProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const WeatherProvider = ({ children }: { children: React.ReactNode }) => {
   const [locationName, setLocationName] = useState<string | null>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(true);

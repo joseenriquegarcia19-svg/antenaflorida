@@ -1,7 +1,27 @@
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const base = (d) => path.resolve(__dirname, d);
+
+// Si aparece ETIMEDOUT (iCloud/carpeta sincronizada): npm run dev:fast o TAILWIND_FAST=1 npm run dev
+const fast = process.env.TAILWIND_FAST === "1";
+const content = fast
+  ? [
+      base("index.html"),
+      base("src/index.css"),
+      base("src/main.tsx"),
+      base("src/App.tsx"),
+      base("src/components/**/*.{js,ts,jsx,tsx}"),
+      base("src/layouts/**/*.{js,ts,jsx,tsx}"),
+      base("src/pages/**/*.{js,ts,jsx,tsx}"),
+    ]
+  : [base("index.html"), base("src/**/*.{js,ts,jsx,tsx}")];
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: "class",
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content,
   theme: {
     container: {
       center: true,
@@ -31,8 +51,8 @@ export default {
         "card-dark": "rgb(var(--card) / <alpha-value>)", 
       },
       fontFamily: {
-        "display": ["Epilogue", "sans-serif"],
-        "sans": ["Noto Sans", "sans-serif"],
+        "display": ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
+        "sans": ["Montserrat", "Inter", "system-ui", "sans-serif"],
       },
       borderRadius: {
         "DEFAULT": "0.5rem",

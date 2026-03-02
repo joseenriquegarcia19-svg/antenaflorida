@@ -11,13 +11,13 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-white transition-colors relative group"
+      className="inline-flex items-center justify-center size-8 sm:size-10 rounded-full bg-slate-200/50 dark:bg-black/40 backdrop-blur-md text-slate-700 dark:text-white hover:bg-slate-300/50 dark:hover:bg-black/60 transition-colors relative group shadow-sm"
       aria-label={isDarkish ? 'Modo Claro' : 'Modo Oscuro'}
     >
       {isDarkish ? (
-        <Sun size={20} />
+        <Sun size={18} className="sm:w-5 sm:h-5" />
       ) : (
-        <Moon size={20} />
+        <Moon size={18} className="sm:w-5 sm:h-5" />
       )}
       
       {/* Tooltip */}

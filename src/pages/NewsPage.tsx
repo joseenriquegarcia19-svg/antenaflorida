@@ -14,6 +14,7 @@ import { SEO } from '@/components/SEO';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { News } from '@/types';
 import { useQuery } from '@tanstack/react-query';
+import { ExchangeRateBar } from '@/components/ExchangeRateBar';
 
 interface NewsItem extends Omit<News, 'content'> {
   content?: string;
@@ -48,29 +49,31 @@ interface NewsItem extends Omit<News, 'content'> {
 }
 
 // --- SUB-COMPONENT: CATEGORY COLUMN ---
-function CategoryColumn({ category }: { category: string }) {
+function CategoryColumn({ category, isDouble = false }: { category: string, isDouble?: boolean }) {
   const { config } = useSiteConfig();
+  const limit = isDouble ? 5 : 3;
+  
   const { data: news = [], isLoading } = useQuery({
-    queryKey: ['news', 'category-column', category],
+    queryKey: ['news', 'category-column', category, limit],
     queryFn: async () => {
       const { data } = await supabase
         .from('news')
         .select('id, title, slug, category, image_url, created_at, reactions, summary')
         .or(`category.ilike.%${category}%,tags.cs.{${category}}`)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(limit);
       return (data || []) as unknown as NewsItem[];
     },
     staleTime: 1000 * 60 * 5 // 5 minutes
   });
 
-  if (isLoading) return <div className="space-y-4">
+  if (isLoading) return <div className="space-y-4 h-full">
     <Skeleton className="h-48 w-full" />
-    <Skeleton className="h-20 w-full" count={2} />
+    <Skeleton className="h-20 w-full" count={isDouble ? 4 : 2} />
   </div>;
 
   if (news.length === 0) return (
-    <div className="flex flex-col gap-4 h-full">
+    <div className={`flex flex-col gap-4 h-full ${isDouble ? 'md:col-span-2 lg:col-span-2' : ''}`}>
       <div className="flex items-center justify-between border-b-2 border-slate-200 dark:border-white/10 pb-2">
         <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
           <span className="size-2 bg-slate-300 dark:bg-white/20 rounded-full" />
@@ -91,9 +94,10 @@ function CategoryColumn({ category }: { category: string }) {
 
   const mainItem = news[0];
   const subItems = news.slice(1);
+  const expectedSubItems = isDouble ? 4 : 2;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${isDouble ? 'md:col-span-2 lg:col-span-2' : ''}`}>
       <div className="flex items-center justify-between border-b-2 border-primary/20 pb-2">
         <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
           <span className="size-2 bg-primary rounded-full" />
@@ -107,46 +111,48 @@ function CategoryColumn({ category }: { category: string }) {
         </Link>
       </div>
       
-      {/* Main Featured Item */}
-      <Link to={`/noticias/${mainItem.slug || mainItem.id}`} className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 shadow-sm hover:shadow-md transition-all">
-         <img 
-            src={getValidImageUrl(mainItem.image_url, 'news', undefined, 400, config)} 
-            alt={mainItem.title} 
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-         />
-         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-         <div className="absolute bottom-0 left-0 right-0 p-4">
-            <h4 className="font-bold text-white text-lg leading-tight line-clamp-2 mb-1 group-hover:text-primary transition-colors">{mainItem.title}</h4>
-            <div className="flex items-center gap-2 text-white/70 text-[10px] uppercase font-bold tracking-widest">
-               <span>{formatDistanceToNow(new Date(mainItem.created_at), { addSuffix: true, locale: es })}</span>
-               {mainItem.reactions && mainItem.reactions.length > 0 && (
-                 <span className="flex items-center gap-1">
-                   <Smile size={10} /> {mainItem.reactions.reduce((acc, curr) => acc + curr.count, 0)}
-                 </span>
-               )}
-            </div>
-         </div>
-      </Link>
+      <div className={`flex ${isDouble ? 'flex-col md:flex-row' : 'flex-col'} gap-4`}>
+        {/* Main Featured Item */}
+        <Link to={`/noticias/${mainItem.slug || mainItem.id}`} className={`group relative rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 shadow-sm hover:shadow-md transition-all ${isDouble ? 'md:w-1/2 aspect-[4/3]' : 'aspect-[4/3]'}`}>
+           <img 
+              src={getValidImageUrl(mainItem.image_url, 'news', undefined, 400, config)} 
+              alt={mainItem.title} 
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+           />
+           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+           <div className="absolute bottom-0 left-0 right-0 p-4">
+              <h4 className="font-bold text-white text-lg leading-tight line-clamp-2 mb-1 group-hover:text-primary transition-colors">{mainItem.title}</h4>
+              <div className="flex items-center gap-2 text-white/70 text-[10px] uppercase font-bold tracking-widest">
+                 <span>{formatDistanceToNow(new Date(mainItem.created_at), { addSuffix: true, locale: es })}</span>
+                 {mainItem.reactions && mainItem.reactions.length > 0 && (
+                   <span className="flex items-center gap-1">
+                     <Smile size={10} /> {mainItem.reactions.reduce((acc, curr) => acc + curr.count, 0)}
+                   </span>
+                 )}
+              </div>
+           </div>
+        </Link>
 
-      {/* Sub Items */}
-      <div className="flex flex-col gap-3">
-        {subItems.map(item => (
-          <Link key={item.id} to={`/noticias/${item.slug || item.id}`} className="group flex gap-3 bg-white dark:bg-white/5 p-2 rounded-lg border border-slate-100 dark:border-white/5 hover:border-primary transition-all">
-            <div className="size-16 rounded-md overflow-hidden shrink-0 bg-slate-100 dark:bg-white/10">
-              <img src={getValidImageUrl(item.image_url, 'news', undefined, 150, config)} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-            </div>
-            <div className="flex flex-col justify-center min-w-0">
-              <h5 className="font-bold text-slate-900 dark:text-white text-xs line-clamp-2 group-hover:text-primary transition-colors leading-snug">{item.title}</h5>
-              <span className="text-[9px] font-bold text-slate-400 dark:text-white/30 uppercase mt-1">{formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: es })}</span>
-            </div>
-          </Link>
-        ))}
-        {/* Fill empty spots if less than 2 subitems */}
-        {subItems.length < 2 && Array.from({ length: 2 - subItems.length }).map((_, i) => (
-             <div key={`empty-${i}`} className="h-[82px] bg-slate-50 dark:bg-white/5 rounded-lg border border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center">
-                <span className="text-[10px] text-slate-400 dark:text-white/20 font-bold uppercase">Espacio disponible</span>
-             </div>
-        ))}
+        {/* Sub Items */}
+        <div className={`flex flex-col gap-3 ${isDouble ? 'md:w-1/2 justify-between' : ''}`}>
+          {subItems.map(item => (
+            <Link key={item.id} to={`/noticias/${item.slug || item.id}`} className="group flex gap-3 bg-white dark:bg-white/5 p-2 rounded-lg border border-slate-100 dark:border-white/5 hover:border-primary transition-all">
+              <div className="size-16 rounded-md overflow-hidden shrink-0 bg-slate-100 dark:bg-white/10">
+                <img src={getValidImageUrl(item.image_url, 'news', undefined, 150, config)} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              </div>
+              <div className="flex flex-col justify-center min-w-0">
+                <h5 className="font-bold text-slate-900 dark:text-white text-xs line-clamp-2 group-hover:text-primary transition-colors leading-snug">{item.title}</h5>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-white/30 uppercase mt-1">{formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: es })}</span>
+              </div>
+            </Link>
+          ))}
+          {/* Fill empty spots if less than expected subitems */}
+          {subItems.length < expectedSubItems && Array.from({ length: expectedSubItems - subItems.length }).map((_, i) => (
+               <div key={`empty-${i}`} className="h-[82px] bg-slate-50 dark:bg-white/5 rounded-lg border border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center">
+                  <span className="text-[10px] text-slate-400 dark:text-white/20 font-bold uppercase">Espacio disponible</span>
+               </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -180,17 +186,29 @@ export default function NewsPage() {
 
   // Use all available categories for the grid
   const gridCategories = useMemo(() => {
+    let base: string[] = [];
     // If we have stats, use them to order categories by popularity
     if (categoryStats && categoryStats.length > 0) {
-      return categoryStats.map(c => c[0]);
+      base = categoryStats.map(c => c[0]);
+    } else {
+      // Fallback to all categories from DB
+      base = siteCategories || [];
     }
-    // Fallback to all categories from DB
-    return siteCategories || [];
+
+    // Ensure specific categories are included for the 8 primary slots
+    const requested = ['Tecnología', 'Música', 'Salud', 'Cuba'];
+    const filteredBase = base.filter(c => !requested.some(r => r.toLowerCase() === c.toLowerCase()));
+    
+    // Combine: top 4 + requested 4 + the rest
+    const top4 = filteredBase.slice(0, 4);
+    const rest = filteredBase.slice(4);
+    
+    return [...top4, ...requested, ...rest];
   }, [categoryStats, siteCategories]);
 
-  // Split categories: First 4 for full display, rest for compact grid
-  const primaryCategories = gridCategories.slice(0, 4);
-  const secondaryCategories = gridCategories.slice(4);
+  // Split categories: First 8 for full display (double width), rest for compact grid
+  const primaryCategories = gridCategories.slice(0, 8);
+  const secondaryCategories = gridCategories.slice(8);
 
   // Initial dashboard data fetch
   useEffect(() => {
@@ -354,6 +372,10 @@ export default function NewsPage() {
     <>
       <SEO title="Noticias" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        <div className="mb-6">
+          <ExchangeRateBar />
+        </div>
+        
         {/* Carousel Section */}
         {carouselItems.length > 0 && (
           <div className="mb-6 relative group">
@@ -414,7 +436,7 @@ export default function NewsPage() {
                         ))}
                       </div>
                       <Link to={`/noticias/${item.slug || item.id}`}>
-                        <h2 className="text-xl sm:text-4xl md:text-5xl font-black text-white mb-2 sm:mb-4 hover:text-primary transition-colors leading-tight drop-shadow-md line-clamp-3 break-words">
+                        <h2 className="text-xl sm:text-4xl md:text-5xl font-black text-white mb-2 sm:mb-4 hover:text-primary transition-colors leading-tight drop-shadow-md break-words">
                           {item.title}
                         </h2>
                       </Link>
@@ -488,46 +510,32 @@ export default function NewsPage() {
         <CategoryQuickAccess />
         {debouncedSearchTerm && <PopularTagsCloud />}
 
+        {/* Trump Banner */}
+        <Link 
+          to="/trump" 
+          className="group relative w-full h-32 sm:h-40 md:h-48 rounded-2xl sm:rounded-3xl overflow-hidden flex items-center justify-center mb-10 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)] hover:shadow-[0_0_50px_rgba(239,68,68,0.4)] transition-all duration-500"
+        >
+          <div className="absolute inset-0 bg-red-600 dark:bg-red-700 transition-colors duration-500" />
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1580128660010-fd027e1e587a?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-top opacity-20 mix-blend-overlay group-hover:scale-105 transition-transform duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-r from-red-900/80 via-transparent to-red-900/80" />
+          
+          <div className="relative z-10 flex flex-col items-center text-center px-4">
+            <h2 className="text-4xl sm:text-6xl md:text-7xl font-black text-white uppercase tracking-tighter italic drop-shadow-2xl group-hover:scale-105 transition-transform duration-500">
+              TRUMP
+            </h2>
+            <p className="text-white/90 text-xs sm:text-sm md:text-base font-bold uppercase tracking-[0.3em] mt-1 sm:mt-2 bg-black/40 backdrop-blur-sm px-4 py-1 rounded-full border border-white/10">
+              Presidencia y Actualidad
+            </p>
+          </div>
+        </Link>
+
         {/* 4-Column Primary Category Grid (Full Display) */}
         {primaryCategories.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
              {primaryCategories.map((cat: string) => (
-                <CategoryColumn key={cat} category={cat} />
+                <CategoryColumn key={cat} category={cat} isDouble={true} />
              ))}
           </div>
-        )}
-
-        {/* Secondary Categories Grid (Compact Cards) */}
-        {secondaryCategories.length > 0 && (
-          <>
-            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-              <span className="size-2 bg-primary rounded-full" />
-              Más Secciones
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-12">
-              {secondaryCategories.map((cat: string) => {
-                const Icon = getCategoryIcon(cat);
-                return (
-                  <Link 
-                    key={cat} 
-                    to={`/noticias/seccion/${cat.toLowerCase()}`}
-                    className="group relative bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-4 flex flex-col items-center justify-center gap-3 hover:border-primary hover:shadow-lg hover:-translate-y-1 transition-all overflow-hidden"
-                  >
-                    {/* Background Icon (Centered & Large) */}
-                    <Icon 
-                      size={120} 
-                      className="absolute inset-0 m-auto text-primary/10 dark:text-primary/20 opacity-0 group-hover:opacity-100 transition-all duration-500 scale-50 group-hover:scale-110 rotate-0 group-hover:-rotate-12 pointer-events-none" 
-                    />
-                    
-                    <div className="size-10 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors relative z-10 group-hover:scale-110 duration-300">
-                      <Icon size={20} className="text-slate-400 dark:text-white/30 group-hover:text-primary transition-colors" />
-                    </div>
-                    <span className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-white text-center group-hover:text-primary transition-colors relative z-10">{cat}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </>
         )}
 
         {/* Section Header: Todas las Noticias */}
@@ -537,7 +545,7 @@ export default function NewsPage() {
             Todas las Noticias
           </h3>
           <span className="text-xs font-bold text-slate-400 dark:text-white/40 uppercase tracking-widest">
-            {news.length > 0 ? `${news.length} artículos` : ''}
+            {totalCount > 0 ? `${totalCount} artículos` : ''}
           </span>
         </div>
 

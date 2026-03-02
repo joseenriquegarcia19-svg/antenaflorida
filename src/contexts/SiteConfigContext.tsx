@@ -92,7 +92,7 @@ function matchRoute(pattern: string, pathname: string) {
   return true;
 }
 
-export const SiteConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const SiteConfigProvider = ({ children }: { children: React.ReactNode }) => {
   const [config, setConfig] = useState<SiteConfig | null>(null);
   const [maintenance, setMaintenance] = useState<PageMaintenance[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -102,67 +102,76 @@ export const SiteConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
-    const [
-      { data: cfgData }, 
-      { data: maintData }, 
-      { data: catsData },
-      { data: newsStats }
-    ] = await Promise.all([
-      supabase.from('site_config').select('*').limit(1).maybeSingle(),
-      supabase.from('page_maintenance').select('route, maintenance_enabled, maintenance_message'),
-      supabase.from('news_categories').select('name').order('name'),
-      supabase.from('news').select('category, views, tags').order('created_at', { ascending: false }).limit(100),
-    ]);
+    console.log('[SiteConfig] Refreshing data');
+    try {
+      const results = await Promise.allSettled([
+        supabase.from('site_config').select('*').limit(1).maybeSingle(),
+        supabase.from('page_maintenance').select('route, maintenance_enabled, maintenance_message'),
+        supabase.from('news_categories').select('name').order('name'),
+        supabase.from('news').select('category, views, tags').order('created_at', { ascending: false }).limit(100),
+      ]);
 
-    if (cfgData) setConfig(cfgData as SiteConfig);
-    if (maintData) setMaintenance(maintData as PageMaintenance[]);
-    if (catsData) setCategories(catsData.map(c => c.name));
+      console.log('[SiteConfig] Fetched data results:', results);
 
-    // Calculate popular categories and tags
-    if (newsStats) {
-      const catViews: Record<string, number> = {};
-      const catCounts: Record<string, number> = {};
-      const tagCounts: Record<string, number> = {};
+      const cfgResult = results[0];
+      if (cfgResult.status === 'fulfilled' && cfgResult.value.data) {
+        console.log('[SiteConfig] Config loaded:', cfgResult.value.data);
+        setConfig(cfgResult.value.data as SiteConfig);
+      } else if (cfgResult.status === 'rejected') {
+        console.error('[SiteConfig] Error fetching config:', cfgResult.reason);
+      }
 
-      const tagViews: Record<string, number> = {};
+      const maintResult = results[1];
+      if (maintResult.status === 'fulfilled' && maintResult.value.data) {
+        setMaintenance(maintResult.value.data as PageMaintenance[]);
+      } else if (maintResult.status === 'rejected') {
+        console.error('[SiteConfig] Error fetching maintenance config:', maintResult.reason);
+      }
 
-      newsStats.forEach(item => {
-        // Categories
-        if (item.category) {
-          const cats = item.category.split(',').map(c => c.trim()).filter(Boolean);
-          cats.forEach(cat => {
-            catViews[cat] = (catViews[cat] || 0) + (item.views || 0);
-            catCounts[cat] = (catCounts[cat] || 0) + 1;
-          });
-        }
+      const catsResult = results[2];
+      if (catsResult.status === 'fulfilled' && catsResult.value.data) {
+        setCategories(catsResult.value.data.map(c => c.name));
+      } else if (catsResult.status === 'rejected') {
+        console.error('[SiteConfig] Error fetching categories:', catsResult.reason);
+      }
 
-        // Tags
-        if (item.tags && Array.isArray(item.tags)) {
-          item.tags.forEach(tag => {
-            if (tag) {
-              tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-              tagViews[tag] = (tagViews[tag] || 0) + (item.views || 0);
-            }
-          });
-        }
-      });
+      const newsStatsResult = results[3];
+      if (newsStatsResult.status === 'fulfilled' && newsStatsResult.value.data) {
+        const newsStats = newsStatsResult.value.data;
+        const catViews: Record<string, number> = {};
+        const catCounts: Record<string, number> = {};
+        const tagViews: Record<string, number> = {};
 
-      // Popular Categories (by views)
-      const sortedByViews = Object.entries(catViews)
-        .sort(([, a], [, b]) => b - a)
-        .map(([name]) => name);
-      setPopularCategories(sortedByViews.slice(0, 10));
+        newsStats.forEach(item => {
+          if (item.category) {
+            const cats = item.category.split(',').map(c => c.trim()).filter(Boolean);
+            cats.forEach(cat => {
+              catViews[cat] = (catViews[cat] || 0) + (item.views || 0);
+              catCounts[cat] = (catCounts[cat] || 0) + 1;
+            });
+          }
+          if (item.tags && Array.isArray(item.tags)) {
+            item.tags.forEach(tag => {
+              if (tag) {
+                tagViews[tag] = (tagViews[tag] || 0) + (item.views || 0);
+              }
+            });
+          }
+        });
 
-      // Category Stats (by frequency, for cloud)
-      const stats = Object.entries(catCounts)
-        .sort(([, a], [, b]) => b - a);
-      setCategoryStats(stats);
+        const sortedByViews = Object.entries(catViews).sort(([, a], [, b]) => b - a).map(([name]) => name);
+        setPopularCategories(sortedByViews.slice(0, 10));
 
-      // Popular Tags (by views)
-      const sortedTags = Object.entries(tagViews)
-        .sort(([, a], [, b]) => b - a)
-        .map(([tag, views]) => ({ tag, views }));
-      setPopularTags(sortedTags.slice(0, 50));
+        const stats = Object.entries(catCounts).sort(([, a], [, b]) => b - a);
+        setCategoryStats(stats);
+
+        const sortedTags = Object.entries(tagViews).sort(([, a], [, b]) => b - a).map(([tag, views]) => ({ tag, views }));
+        setPopularTags(sortedTags.slice(0, 50));
+      } else if (newsStatsResult.status === 'rejected') {
+        console.error('[SiteConfig] Error fetching news stats:', newsStatsResult.reason);
+      }
+    } catch (e) {
+      console.error('[SiteConfig] General error in refresh:', e);
     }
   };
 
@@ -179,11 +188,12 @@ export const SiteConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   useEffect(() => {
+    let isMounted = true;
     (async () => {
       try {
         await refresh();
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
 
@@ -204,6 +214,7 @@ export const SiteConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       .subscribe();
 
     return () => {
+      isMounted = false;
       supabase.removeChannel(configChannel);
       supabase.removeChannel(categoriesChannel);
     };
@@ -255,11 +266,11 @@ export const SiteConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       {children}
     </SiteConfigContext.Provider>
   );
-}
+};
 
-export function useSiteConfig() {
+export const useSiteConfig = () => {
   const ctx = useContext(SiteConfigContext);
   if (!ctx) throw new Error('useSiteConfig must be used within a SiteConfigProvider');
   return ctx;
-}
+};
 

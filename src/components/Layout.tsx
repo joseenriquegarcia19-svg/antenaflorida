@@ -41,7 +41,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         )}
       </main>
       <Footer />
-      <div className="sticky bottom-[calc(60px+env(safe-area-inset-bottom))] xl:bottom-0 z-[100] transition-all duration-300">
+      <div className="sticky bottom-[calc(64px+28px+env(safe-area-inset-bottom))] xl:bottom-0 z-[100] transition-all duration-300">
         <PlayerBar />
       </div>
       <MobileBottomMenu />

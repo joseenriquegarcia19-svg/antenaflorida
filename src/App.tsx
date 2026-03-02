@@ -34,6 +34,8 @@ const Analytics = lazy(() => import('./pages/admin/Analytics'));
 const NewsPage = lazy(() => import('./pages/NewsPage'));
 const PodcastsPage = lazy(() => import('./pages/PodcastsPage'));
 const ShowsPage = lazy(() => import('./pages/ShowsPage'));
+const SectionsPage = lazy(() => import('./pages/SectionsPage'));
+const TrumpPage = lazy(() => import('./pages/TrumpPage'));
 const GuestsPage = lazy(() => import('./pages/GuestsPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
 const TeamMemberPage = lazy(() => import('./pages/TeamMemberPage'));
@@ -72,7 +74,6 @@ const GuestLayout = lazy(() => import('./layouts/GuestLayout').then(m => ({ defa
 const Profile = lazy(() => import('./pages/admin/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const EventsPage = lazy(() => import('./pages/EventsPage'));
-const FlightStatusPage = lazy(() => import('./pages/FlightStatusPage'));
 
 
 import { useTrackPageView } from './hooks/useTrackPageView';
@@ -118,6 +119,8 @@ function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/horario" element={<Schedule />} />
                   <Route path="/noticias" element={<NewsPage />} />
+                  <Route path="/trump" element={<TrumpPage />} />
+                  <Route path="/noticias/secciones" element={<SectionsPage />} />
                   <Route path="/noticias/:id" element={<NewsDetail />} />
                   <Route path="/noticias/seccion/:section" element={<SectionNewsPage />} />
                   <Route path="/noticias/:id/relacionado" element={<RelatedContentPage />} />
@@ -137,7 +140,6 @@ function App() {
                   <Route path="/patrocinadores" element={<SponsorsPage />} />
                   <Route path="/sorteos" element={<GiveawaysPage />} />
                   <Route path="/eventos" element={<EventsPage />} />
-                  <Route path="/noticias/vuelos" element={<FlightStatusPage />} />
 
                   <Route path="/chat" element={<LiveChatPage />} />
                   <Route path="/alexa" element={<AlexaPage />} />

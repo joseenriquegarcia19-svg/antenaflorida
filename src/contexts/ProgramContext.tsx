@@ -27,7 +27,7 @@ const hexToRgbValues = (hex: string) => {
   return `${r} ${g} ${b}`;
 };
 
-export const ProgramProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ProgramProvider = ({ children }: { children: React.ReactNode }) => {
   const { slug } = useParams<{ slug: string }>();
   const [program, setProgram] = useState<Show | null>(null);
   const [stats, setStats] = useState({ avgRating: 0, messageCount: 0 });

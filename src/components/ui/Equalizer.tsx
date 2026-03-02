@@ -69,7 +69,7 @@ export const Equalizer: React.FC<EqualizerProps> = ({ isPlaying, className = '',
 
       let requestsNextFrame = true;
 
-      if (!playing) {
+      if (!playing && !buffering) {
         // Draw flat bars — smoothly return heights to 4
         let isTotallyFlat = true;
         for (let i = 0; i < BAR_COUNT; i++) {
@@ -83,14 +83,7 @@ export const Equalizer: React.FC<EqualizerProps> = ({ isPlaying, className = '',
         if (isTotallyFlat) {
           requestsNextFrame = false;
         }
-      } else if (buffering) {
-        // Buffering state — slow horizontal wave to show "waiting" but active
-        for (let i = 0; i < BAR_COUNT; i++) {
-          const targetHeight = 6 + Math.sin(Date.now() * 0.005 + i * 0.5) * 4;
-          heightsRef.current[i] = heightsRef.current[i] * 0.9 + targetHeight * 0.1;
-          drawBar(i * (barWidth + SPACING), heightsRef.current[i], 0.3 + Math.sin(Date.now() * 0.01) * 0.2);
-        }
-      } else if (analyser) {
+      } else if (analyser && playing) {
         // Real frequency data
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(dataArray);
@@ -127,7 +120,7 @@ export const Equalizer: React.FC<EqualizerProps> = ({ isPlaying, className = '',
           }
         }
       } else {
-        // Playing but no analyser node — synthetic animation
+        // Playing but no analyser node, OR buffering — synthetic animation (to give immediate "playing" feedback)
         for (let i = 0; i < BAR_COUNT; i++) {
           const targetHeight = 4 + Math.sin(Date.now() * 0.008 + i * 0.7) * 8 + Math.random() * 4;
           heightsRef.current[i] = heightsRef.current[i] * 0.8 + targetHeight * 0.2;

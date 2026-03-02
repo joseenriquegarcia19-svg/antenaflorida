@@ -9,7 +9,7 @@ interface PaletteContextType {
 
 const PaletteContext = createContext<PaletteContextType | undefined>(undefined);
 
-export function PaletteProvider({ children }: { children: React.ReactNode }) {
+export const PaletteProvider = ({ children }: { children: React.ReactNode }) => {
   const [palette, setPalette] = useState<Palette>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('palette') as Palette | null;
@@ -42,12 +42,12 @@ export function PaletteProvider({ children }: { children: React.ReactNode }) {
   const value = { palette, setPalette };
 
   return <PaletteContext.Provider value={value}>{children}</PaletteContext.Provider>;
-}
+};
 
-export function usePalette() {
+export const usePalette = () => {
   const context = useContext(PaletteContext);
   if (context === undefined) {
     throw new Error('usePalette must be used within a PaletteProvider');
   }
   return context;
-}
+};

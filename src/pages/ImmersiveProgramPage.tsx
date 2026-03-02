@@ -182,7 +182,7 @@ const ImmersiveProgramPage = () => {
 
   return (
     <div 
-      className="min-h-screen text-white font-['Plus_Jakarta_Sans'] overflow-x-hidden"
+      className="min-h-screen text-white font-['Plus_Jakarta_Sans'] overflow-x-hidden pb-[calc(64px+env(safe-area-inset-bottom))] xl:pb-[80px]"
       style={{ '--program-color': programColor } as React.CSSProperties}
     >
       <SEO 
@@ -198,22 +198,24 @@ const ImmersiveProgramPage = () => {
       {/* Top Left Branding */}
       <div className="fixed top-5 left-5 z-[100] flex items-center gap-3 bg-black/20 backdrop-blur-md border border-white/10 p-2 rounded-2xl shadow-2xl transition-all hover:bg-black/30">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="size-8 rounded-lg overflow-hidden bg-white/20 dark:bg-black/40 border border-white/10 flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 shadow-lg group-hover:opacity-100">
-            <Logo className="scale-75" />
+          <div className="size-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 shadow-lg border border-white/10 bg-white/10">
+            <Logo className="w-full h-full object-cover scale-110" />
           </div>
           <div className="flex flex-col">
-            <h2 className="text-base font-black tracking-tighter uppercase italic leading-none text-white/60 group-hover:text-white transition-colors drop-shadow-lg">
+            <h2 className="text-sm font-black tracking-tighter uppercase italic leading-none text-white/60 group-hover:text-white transition-colors">
               {config?.site_name ? (
                 <>
                   {config.site_name.split(' ').map((word, i) => (
-                    <span key={i}>{word}{' '}</span>
+                    <span key={i} className={word.toLowerCase() === 'florida' ? 'text-primary-orange' : 'text-primary'}>
+                      {word}{' '}
+                    </span>
                   ))}
                 </>
               ) : (
-                <>ANTENA FLORIDA</>
+                <><span className="text-primary">ANTENA</span> <span className="text-primary-orange">FLORIDA</span></>
               )}
             </h2>
-            <span className="text-[9px] font-bold text-white/40 group-hover:text-white/60 tracking-widest uppercase leading-none mt-1 drop-shadow-md transition-colors">
+            <span className="text-[8px] font-bold text-primary tracking-[0.2em] uppercase leading-none mt-1">
               {config?.slogan || 'La señal que nos une'}
             </span>
           </div>
@@ -275,9 +277,12 @@ const ImmersiveProgramPage = () => {
         <div className={`absolute inset-0 ${slug === 'acompaname-tonight' ? 'bg-gradient-to-t from-[#021024] via-[#021024]/80 to-transparent' : slug === 'el-fogon-show' ? 'bg-gradient-to-t from-[#1a0505] via-[#1a0505]/80 to-transparent' : 'bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/80 to-transparent'}`} />
 
         {/* Hero Content */}
-        <div className="absolute bottom-12 sm:bottom-20 left-0 right-0 z-10 max-w-5xl mx-auto px-6 sm:px-12 animate-fade-in-up">
-          <h1 className="mb-6 leading-[0.85] sm:leading-tight drop-shadow-[0_0_50px_var(--program-color)]/30">
-            <span className="font-['Plus_Jakarta_Sans'] bg-gradient-to-b from-white via-white to-white/80 bg-clip-text text-transparent tracking-[0.1em] sm:tracking-[0.15em] font-extrabold uppercase text-4xl sm:text-6xl lg:text-7xl block mb-2 sm:mb-4">
+        <div className="absolute bottom-12 sm:bottom-20 left-0 right-0 z-10 max-w-5xl mx-auto px-6 sm:px-12 animate-fade-in-up drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+          <h1 className="mb-6 leading-[0.85] sm:leading-tight">
+            <span 
+              className="block font-['Plus_Jakarta_Sans'] text-white tracking-[0.1em] sm:tracking-[0.15em] font-extrabold uppercase text-4xl sm:text-6xl lg:text-7xl mb-2 sm:mb-4"
+              style={{ textShadow: '2px 4px 8px rgba(0,0,0,0.9)' }}
+            >
               {mainTitle}
             </span>
             {subTitle && (
@@ -285,7 +290,7 @@ const ImmersiveProgramPage = () => {
                 className="font-serif block font-black italic text-6xl sm:text-8xl lg:text-[10rem] uppercase tracking-tighter leading-none"
                 style={{ 
                   color: 'var(--program-color)',
-                  textShadow: '0 0 30px rgba(var(--color-primary), 0.5)'
+                  textShadow: '3px 5px 10px rgba(0,0,0,0.9)'
                 }}
               >
                 {subTitle}
@@ -372,10 +377,7 @@ const ImmersiveProgramPage = () => {
         }} />
       </section>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,900&display=swap');
-      `}} />
+      {/* Montserrat cargada globalmente en index.html */}
     </div>
   );
 };
