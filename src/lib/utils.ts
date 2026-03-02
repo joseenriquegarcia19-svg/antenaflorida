@@ -13,9 +13,66 @@ export function getYoutubeId(url: string): string | null {
   if (shortsMatch) return shortsMatch[1];
   
   // Regular YouTube
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
+}
+
+export function embedVideoLinksInHtml(html: string): string {
+  if (!html) return '';
+
+  // 1. Reemplazar enlaces en formato <a href="...">...</a> que apuntan a YouTube
+  let processedHtml = html.replace(
+    /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)[a-zA-Z0-9_-]+)[^"']*["'][^>]*>.*?<\/a>/gi,
+    (match, url) => {
+      const embedUrl = getYoutubeEmbedUrl(url);
+      if (embedUrl) {
+        return `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><iframe src="${embedUrl}" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      }
+      return match;
+    }
+  );
+
+  // 2. Reemplazar enlaces crudos de YouTube que no están en una etiqueta <a> (están sueltos en el texto)
+  // Lookbehind for > or space to avoid replacing inside existing HTML attributes.
+  processedHtml = processedHtml.replace(
+    /(?:^|\s|<p>|<br>)(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)[a-zA-Z0-9_-]+(?:[&?][a-zA-Z0-9_=&-]+)?)(?:$|\s|<\/p>|<br>)/gi,
+    (match, url) => {
+      const embedUrl = getYoutubeEmbedUrl(url);
+      if (embedUrl) {
+        const replacement = `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><iframe src="${embedUrl}" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        return match.replace(url, replacement);
+      }
+      return match;
+    }
+  );
+
+  // 3. Reemplazar enlaces de Facebook Video (en formato <a>)
+  processedHtml = processedHtml.replace(
+    /<a[^>]*href=["'](https?:\/\/(?:www\.)?facebook\.com\/[^/]+\/videos\/[0-9]+(?:\/)?)[^"']*["'][^>]*>.*?<\/a>/gi,
+    (match, url) => {
+      const embedUrl = getFacebookEmbedUrl(url);
+      if (embedUrl) {
+        return `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><iframe src="${embedUrl}" class="w-full h-full border-0" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+      }
+      return match;
+    }
+  );
+
+  // 4. Reemplazar enlaces de Vimeo
+  processedHtml = processedHtml.replace(
+    /<a[^>]*href=["'](https?:\/\/(?:www\.)?vimeo\.com\/[0-9]+)[^"']*["'][^>]*>.*?<\/a>/gi,
+    (match, url) => {
+      const vimeoIdMatch = url.match(/vimeo\.com\/([0-9]+)/);
+      if (vimeoIdMatch && vimeoIdMatch[1]) {
+        const embedUrl = `https://player.vimeo.com/video/${vimeoIdMatch[1]}?title=0&byline=0&portrait=0`;
+        return `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><iframe src="${embedUrl}" class="w-full h-full border-0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+      }
+      return match;
+    }
+  );
+
+  return processedHtml;
 }
 
 export function getYoutubeChannelId(url: string): string | null {

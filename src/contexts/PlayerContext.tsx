@@ -4,12 +4,14 @@ import { useToast } from './ToastContext';
 import { useScheduleTimeline, Show } from '@/hooks/useScheduleTimeline';
 import { DEFAULT_SITE_CONFIG } from '@/lib/constants';
 import { getTrackArtwork } from '@/lib/metadata';
-import { 
+import type { 
   Track, 
-  PlayerContext, 
-  PlayerProgressContext,
   PlayerContextType,
-  PlayerProgressContextType
+  PlayerProgressContextType 
+} from './PlayerContextCore';
+import { 
+  PlayerContext, 
+  PlayerProgressContext
 } from './PlayerContextCore';
 
 export { Track }; // Re-export Track if needed
@@ -268,6 +270,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setPlayerDragPosState({ x, y });
   }, []);
 
+  /** Updates audio volume immediately without state (for smooth slider drag); still call setVolume for persistence. */
+  const setVolumeImmediate = useCallback((v: number) => {
+    if (audioRef.current) audioRef.current.volume = v;
+  }, []);
 
   // --- SIDE EFFECTS (useEffect hooks) ---
 
@@ -405,17 +411,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchNowPlaying, isPlaying, currentTrack, loadAndPlay]);
 
-
   // --- CONTEXT VALUES ---
   const playerContextValue = useMemo<PlayerContextType>(() => ({
     isPlaying, isBuffering, currentTrack, liveTrack, volume, repeat, isPlayerCollapsed, analyserNode, playerDragX: playerDragPos.x, playerDragY: playerDragPos.y,
     queue, queueIndex,
-    togglePlay, playTrack, setVolume, toggleRepeat, setIsPlayerCollapsed, setIsPlaying, syncLiveStream, setPlayerDragPos,
+    togglePlay, playTrack, setVolume, setVolumeImmediate, toggleRepeat, setIsPlayerCollapsed, setIsPlaying, syncLiveStream, setPlayerDragPos,
     playNext, playPrevious, setQueueIndex, removeFromQueue, clearQueue
   }), [
     isPlaying, isBuffering, currentTrack, liveTrack, volume, repeat, isPlayerCollapsed, analyserNode, playerDragPos,
     queue, queueIndex,
-    togglePlay, playTrack, setVolume, toggleRepeat, setIsPlayerCollapsed, setIsPlaying, syncLiveStream, setPlayerDragPos,
+    togglePlay, playTrack, setVolume, setVolumeImmediate, toggleRepeat, setIsPlayerCollapsed, setIsPlaying, syncLiveStream, setPlayerDragPos,
     playNext, playPrevious, setQueueIndex, removeFromQueue, clearQueue
   ]);
 

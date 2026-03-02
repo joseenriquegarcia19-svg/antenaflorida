@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useThemeContext } from '@/contexts/ThemeContext';
-import { getValidImageUrl } from '@/lib/utils';
+import { getValidImageUrl, embedVideoLinksInHtml } from '@/lib/utils';
 import { PostGeneratorModal } from '@/components/ui/PostGeneratorModal';
 
 import { SponsorBanner } from '@/components/SponsorBanner';
@@ -79,7 +79,7 @@ export default function NewsDetail() {
   const [relatedNews, setRelatedNews] = useState<NewsItem[]>([]);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
   const [generatedFacts, setGeneratedFacts] = useState<string[]>([]);
-  const [isGeneratingFacts, setIsGeneratingFacts] = useState(false);
+  const [isGeneratingFacts] = useState(false);
   const [threadNews, setThreadNews] = useState<NewsItem[]>([]);
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
 
@@ -92,7 +92,11 @@ export default function NewsDetail() {
 
 
 
-  const generateFunFacts = useCallback(async (newsId: string, newsContent: string): Promise<string[]> => {
+  const generateFunFacts = useCallback(async (): Promise<string[]> => {
+    // El usuario solicitó desactivar los mensajes generados por IA
+    console.warn("AI fact generation is disabled by request.");
+    return [];
+    /*
     if (!config?.enable_ai_post_generator) {
       console.warn("AI fact generation is not enabled in site configuration.");
       return [];
@@ -126,7 +130,8 @@ export default function NewsDetail() {
     } finally {
       setIsGeneratingFacts(false);
     }
-  }, [config?.enable_ai_post_generator, toast]);
+    */
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -231,7 +236,7 @@ export default function NewsDetail() {
             if (existingFacts.length < 3) {
               const contentToAnalyze = newsData.summary || newsData.content || '';
               if (contentToAnalyze) {
-                const newFacts = await generateFunFacts(newsId, contentToAnalyze);
+                const newFacts = await generateFunFacts();
                 if (isMounted && newFacts.length > 0) {
                   setGeneratedFacts(newFacts);
                 }
@@ -604,13 +609,6 @@ export default function NewsDetail() {
           
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => setIsGeneratorOpen(true)}
-              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-900 dark:text-white transition-colors"
-              aria-label="Generar Post"
-            >
-              <ImageIcon size={24} />
-            </button>
-            <button 
               onClick={handleShare}
               className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-900 dark:text-white transition-colors"
               aria-label="Compartir"
@@ -809,7 +807,7 @@ export default function NewsDetail() {
 
         <div 
           className="news-content max-w-none mb-8"
-          dangerouslySetInnerHTML={{ __html: news.content }}
+          dangerouslySetInnerHTML={{ __html: embedVideoLinksInHtml(news.content) }}
         />
 
 
