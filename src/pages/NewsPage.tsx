@@ -196,7 +196,7 @@ export default function NewsPage() {
     }
 
     // Ensure specific categories are included for the 8 primary slots
-    const requested = ['Tecnología', 'Música', 'Salud', 'Video Juegos'];
+    const requested = ['Tecnología', 'Música', 'Salud', 'Videojuegos'];
     const filteredBase = base.filter(c => 
       !requested.some(r => r.toLowerCase() === c.toLowerCase()) && 
       c !== 'Política Internacional'
