@@ -2152,6 +2152,68 @@ export default function ManageNews() {
                                    </button>
                                 </div>
                              )}
+
+                             {draft.status === 'error' && (
+                                <div className="mt-auto pt-3 border-t border-slate-200 dark:border-white/10 flex justify-end">
+                                   <button 
+                                     onClick={async () => {
+                                        setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, status: 'processing', title: 'Reintentando...', error: undefined } : p));
+                                        try {
+                                           const { data, error } = await supabase.functions.invoke('generate-news', {
+                                              body: { idea: draft.url, target: null }
+                                           });
+                                           
+                                           if (error) throw new Error(error.message);
+                                           if (data?.error) throw new Error(data.error);
+                                           
+                                           const generated = data || {};
+                                           const formatTags = (tags: string | string[]): string[] => {
+                                             if (!tags) return [];
+                                             if (Array.isArray(tags)) return tags;
+                                             return String(tags).split(',').map(t => t.trim()).filter(Boolean);
+                                           };
+                                           const ensureHtml = (html: string) => {
+                                             if (!html) return '';
+                                             if (!html.includes('<p>') && html.includes('\n')) {
+                                               return html.split('\n').filter((p: string) => p.trim()).map((p: string) => `<p>${p.trim()}</p>`).join('');
+                                             }
+                                             return html;
+                                           };
+                                           const rawSidebarContent = generated.sidebar_content || generated.sidebar_facts || '';
+                                           let finalFacts: string[] = [];
+                                           if (rawSidebarContent.includes('|')) {
+                                               finalFacts = rawSidebarContent.split('|').map((f: string) => f.trim());
+                                           } else if (rawSidebarContent.includes('\n')) {
+                                               finalFacts = rawSidebarContent.split('\n').map((f: string) => f.replace(/^\d+[.)-]\s*/, '').trim()).filter(Boolean);
+                                           } else {
+                                               finalFacts = [rawSidebarContent];
+                                           }
+
+                                           setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { 
+                                              ...p, 
+                                              status: 'success', 
+                                              title: generated.title || 'Generado sin título',
+                                              content: ensureHtml(generated.content || ''),
+                                              category: generated.category || 'Noticia',
+                                              image_url: generated.image_url || '',
+                                              tags: formatTags(generated.tags),
+                                              summary: generated.summary || '',
+                                              sidebar_content: finalFacts.slice(0, 5).join(' | '),
+                                              image_source: generated.image_source || '',
+                                              image_source_url: draft.url
+                                           } : p));
+                                           
+                                        } catch (err: unknown) {
+                                           const errorMessage = err instanceof Error ? err.message : 'Error de IA';
+                                           setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, status: 'error', error: errorMessage } : p));
+                                        }
+                                     }}
+                                     className="text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                                   >
+                                     <Sparkles size={14} /> Reintentar
+                                   </button>
+                                </div>
+                             )}
                          </div>
                       ))}
                    </div>
