@@ -42,6 +42,7 @@ interface Reaction {
 
 interface NewsItem {
   id: string;
+  slug?: string;
   title: string;
   content?: string;
   category: string;
@@ -1832,6 +1833,8 @@ export default function ManageNews() {
         let finalValue = value;
         if (targetField === 'content') {
           finalValue = ensureHtml(value);
+        } else if (targetField === 'category') {
+          finalValue = String(value).replace(/\s+y\s+/gi, ', ').replace(/\s+and\s+/gi, ', ').replace(/,\s*,/g, ',').trim();
         }
         
         console.log(`Asignando valor al campo ${targetField}:`, finalValue);
@@ -1858,7 +1861,9 @@ export default function ManageNews() {
         console.log('Realizando asignación completa de campos...');
         setValue('title', generated.title || '', { shouldDirty: true, shouldValidate: true });
         setValue('content', ensureHtml(generated.content || ''), { shouldDirty: true, shouldValidate: true });
-        setValue('category', generated.category || '', { shouldDirty: true, shouldValidate: true });
+        // Sanitize category to prevent " y "
+        const sanitizedCategory = String(generated.category || '').replace(/\s+y\s+/gi, ', ').replace(/\s+and\s+/gi, ', ').replace(/,\s*,/g, ',').trim();
+        setValue('category', sanitizedCategory, { shouldDirty: true, shouldValidate: true });
         setValue('tags', formatTags(generated.tags), { shouldDirty: true, shouldValidate: true });
         setValue('summary', generated.summary || '', { shouldDirty: true, shouldValidate: true });
         
@@ -1933,6 +1938,8 @@ export default function ManageNews() {
              return html;
            };
            
+           const sanitizedCategory = String(generated.category || '').replace(/\s+y\s+/gi, ', ').replace(/\s+and\s+/gi, ', ').replace(/,\s*,/g, ',').trim();
+           
            const rawSidebarContent = generated.sidebar_content || generated.sidebar_facts || '';
            let finalFacts: string[] = [];
            if (rawSidebarContent.includes('|')) {
@@ -1948,7 +1955,7 @@ export default function ManageNews() {
               status: 'success', 
               title: generated.title || 'Generado sin título',
               content: ensureHtml(generated.content || ''),
-              category: generated.category || 'Noticia',
+              category: sanitizedCategory || 'Noticia',
               image_url: generated.image_url || '',
               tags: formatTags(generated.tags),
               summary: generated.summary || '',

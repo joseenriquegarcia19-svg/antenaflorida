@@ -196,8 +196,11 @@ export default function NewsPage() {
     }
 
     // Ensure specific categories are included for the 8 primary slots
-    const requested = ['Tecnología', 'Música', 'Salud', 'Cuba'];
-    const filteredBase = base.filter(c => !requested.some(r => r.toLowerCase() === c.toLowerCase()));
+    const requested = ['Tecnología', 'Música', 'Salud', 'Video Juegos'];
+    const filteredBase = base.filter(c => 
+      !requested.some(r => r.toLowerCase() === c.toLowerCase()) && 
+      c !== 'Política Internacional'
+    );
     
     // Combine: top 4 + requested 4 + the rest
     const top4 = filteredBase.slice(0, 4);
