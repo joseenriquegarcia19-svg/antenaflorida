@@ -31,6 +31,15 @@ export default defineConfig({
   },
   build: {
     outDir: process.env.VITE_OUT_DIR || path.join(os.tmpdir(), 'vite-radio-wave-dist'),
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'supabase-vendor': ['@supabase/supabase-js'],
+          'ui-vendor': ['lucide-react', 'framer-motion', 'react-helmet-async']
+        }
+      }
+    }
   },
   cacheDir,
 })
