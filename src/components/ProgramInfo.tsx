@@ -131,7 +131,7 @@ const ProgramInfo: React.FC = () => {
                   href={social.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="size-12 bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl flex items-center justify-center transition-all hover:-translate-y-1 shadow-lg group"
+                  className="size-12 bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl flex items-center justify-center transition-colors hover:-translate-y-1 shadow-lg group"
                   style={{ color: programColor }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = programColor;

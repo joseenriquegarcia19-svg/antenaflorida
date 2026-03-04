@@ -120,7 +120,7 @@ export const FeaturedNewsSection: React.FC = () => {
   const bottomRightNews = currentNews.slice(7, 10);
 
   const NewsCardSmall = ({ item }: { item: NewsItem }) => (
-    <Link to={`/noticias/${item.slug || item.id}`} className="group flex gap-3 bg-white/10 backdrop-blur-sm p-2 rounded-xl hover:bg-white/20 transition-all border border-white/10 h-full">
+    <Link to={`/noticias/${item.slug || item.id}`} className="group flex gap-3 bg-white/10 backdrop-blur-sm p-2 rounded-xl hover:bg-white/20 transition-colors border border-white/10 h-full">
         <div className="w-20 sm:w-24 aspect-video rounded-lg overflow-hidden flex-shrink-0 relative bg-black/20 flex items-center justify-center">
             <img 
                 src={getValidImageUrl(item.image_url, 'news', undefined, 300, config)}

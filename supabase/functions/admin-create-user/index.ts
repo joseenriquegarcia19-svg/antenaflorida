@@ -41,24 +41,28 @@ serve(async (req) => {
       });
     }
 
+    const DEFAULT_AVATAR_URL = '/avatar-antenna.svg';
+
     const { email, password, role, permissions, full_name, team_member_id, avatar_url } = await req.json();
 
     if (!email || !password) {
       throw new Error('Email and password are required');
     }
 
+    const effectiveAvatarUrl = avatar_url || DEFAULT_AVATAR_URL;
+
     // Create the user using Admin API
     const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { role, full_name, avatar_url }, 
+      user_metadata: { role, full_name, avatar_url: effectiveAvatarUrl }, 
     });
 
     if (createError) throw createError;
     if (!newUser.user) throw new Error('User creation failed');
 
-    // Insert/Update profile
+    // Insert/Update profile (siempre con avatar por defecto si no se envía uno)
     const { error: updateError } = await supabaseClient
       .from('profiles')
       .upsert({
@@ -68,7 +72,7 @@ serve(async (req) => {
         permissions: permissions || {},
         full_name: full_name || null,
         team_member_id: team_member_id || null,
-        avatar_url: avatar_url || null,
+        avatar_url: effectiveAvatarUrl,
         super_admin: false,
         is_temporary_password: true,
         temp_password_login_attempts: 0

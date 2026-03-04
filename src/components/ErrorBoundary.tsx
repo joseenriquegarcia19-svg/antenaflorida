@@ -1,5 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { Logo } from '@/components/ui/Logo';
+import { useSiteConfig } from '@/contexts/SiteConfigContext';
+import versionData from '../../version.json';
 
 interface Props {
   children?: ReactNode;
@@ -12,18 +15,36 @@ interface State {
 }
 
 const ErrorFallback: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+  const { config } = useSiteConfig();
+  const siteName = config?.site_name || 'Antena Florida';
+  const slogan = config?.slogan || 'La señal que nos une';
+
   return (
     <div className="min-h-[300px] w-full flex flex-col items-center justify-center p-8 text-center transition-all animate-in fade-in zoom-in duration-500">
-      <div className="mb-6">
-        <div className="w-24 h-24 flex items-center justify-center">
-          <AlertCircle className="w-12 h-12 text-slate-300 dark:text-white/10" />
+      <div className="mb-6 flex flex-col items-center">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center overflow-hidden bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex-shrink-0">
+          <Logo className="w-full h-full object-contain scale-110" />
         </div>
+        <div className="mt-4 flex flex-col items-center gap-1">
+          <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white" style={{ fontFamily: '"Montserrat", "Helvetica Neue", Arial, sans-serif' }}>
+            {siteName}
+          </h2>
+          <p className="text-xs font-bold text-primary dark:text-primary/90 tracking-[0.15em] uppercase" style={{ fontFamily: '"Montserrat", "Helvetica Neue", Arial, sans-serif' }}>
+            {slogan}
+          </p>
+        </div>
+        <p className="text-[10px] font-mono text-slate-400 dark:text-white/40 uppercase tracking-widest mt-2">
+          Estudios Elíos
+        </p>
+        <p className="text-[10px] font-mono text-slate-400 dark:text-white/30 mt-1">
+          v{versionData.version}
+        </p>
       </div>
 
       <div className="mb-6">
-        <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white mb-2">
+        <h3 className="text-lg font-black uppercase tracking-tighter text-slate-900 dark:text-white mb-2">
           Ups, algo no va bien
-        </h2>
+        </h3>
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
           Ha ocurrido un inconveniente al cargar esta sección. Estamos trabajando para solucionarlo.
         </p>

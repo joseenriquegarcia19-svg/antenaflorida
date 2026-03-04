@@ -98,7 +98,11 @@ export default function SectionNewsPage() {
 
   return (
     <div className="min-h-screen pb-20 py-8 px-4 sm:px-6 lg:px-8">
-      <SEO title={`Noticias de ${title}`} />
+      <SEO
+        title={`Noticias de ${title}`}
+        description={`Últimas noticias y artículos sobre ${title} en Antena Florida. Actualidad e información.`}
+        keywords={`noticias, ${title}, antena florida, actualidad`}
+      />
 
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">

@@ -128,7 +128,11 @@ export default function GalleryPage() {
 
   return (
       <div className="pt-8 pb-20">
-        <SEO title="Galería" />
+        <SEO
+          title="Galería"
+          description="Galería de fotos de Antena Florida: estudio, eventos, programas y momentos en vivo."
+          keywords="galeria, fotos, estudio, eventos, antena florida"
+        />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 animate-fade-in-up">
             <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">

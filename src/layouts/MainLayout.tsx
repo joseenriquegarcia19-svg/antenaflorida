@@ -8,11 +8,13 @@ import { MobileBottomMenu } from '../components/MobileBottomMenu';
 import { BreakingNewsTicker } from '../components/BreakingNewsTicker';
 import { WelcomeModal } from '../components/WelcomeModal';
 import { LoginModal } from '../components/LoginModal';
+import { NotificationPermissionBanner } from '../components/NotificationPermissionBanner';
 import { usePlayer } from '../hooks/usePlayer';
 import { useSiteConfig } from '../contexts/SiteConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { SEO } from '../components/SEO';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export function MainLayout() {
   const { currentTrack, isPlayerCollapsed } = usePlayer();
@@ -50,7 +52,7 @@ export function MainLayout() {
     <div className="min-h-screen bg-background font-display text-foreground transition-colors duration-300 flex flex-col">
       <SEO />
       {!isChatPage && (
-        <div className="sticky top-0 z-50 w-full shadow-sm bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl transition-all duration-300">
+        <div className="sticky top-0 z-50 w-full shadow-sm bg-background-light dark:bg-background-dark/95 backdrop-blur-xl isolation-isolate transition-all duration-300" style={{ transform: 'translateZ(0)' }}>
           <style>{`
             .header-bg-dynamic {
               background-image: ${config?.header_bg_image_url ? `url(${config.header_bg_image_url})` : 'none'};
@@ -84,11 +86,14 @@ export function MainLayout() {
             </div>
           </div>
         ) : (
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         )}
       </main>
       <WelcomeModal isOpen={showWelcome} onClose={handleCloseWelcome} />
       <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      <NotificationPermissionBanner />
       {!isChatPage && <Footer />}
       <div
         id="player-expanded-wrapper"

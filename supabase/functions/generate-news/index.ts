@@ -90,11 +90,11 @@ serve(async (req) => {
     switch (target) {
       case 'title': promptGoal = 'Genera un titular atractivo en ESPAÑOL (máx 70 caracteres). El JSON debe tener la clave "title".'; break;
       case 'summary': promptGoal = 'Genera un resumen en ESPAÑOL de exactamente 2 oraciones. El JSON debe tener la clave "summary".'; break;
-      case 'category': promptGoal = `Elige las categorías más adecuadas en ESPAÑOL de esta lista: [${existingCategories}]. Puedes elegir hasta 3. IMPORTANTE: Sepáralas únicamente con comas (,) y NUNCA uses la palabra "y" o "and". Responde SOLO con el nombre de las categorías en la clave "category".`; break;
+      case 'category': promptGoal = `Elige las categorías más adecuadas en ESPAÑOL de esta lista: [${existingCategories}]. Puedes elegir hasta 3. IMPORTANTE: Sepáralas únicamente con comas (,) y NUNCA uses la palabra "y" o "and". Ej: "Política, Internacional". Responde SOLO con el nombre de las categorías en la clave "category".`; break;
       case 'tags': promptGoal = 'Genera 5 etiquetas en ESPAÑOL separadas por comas (como un solo string). El JSON debe tener la clave "tags".'; break;
       case 'sidebar_content': promptGoal = 'Genera exactamente 3 datos curiosos o de interés breves sobre esta noticia. Responde con un objeto JSON que tenga la clave "sidebar_facts" que sea un ARRAY de 3 strings (Ejemplo: ["Dato 1", "Dato 2", "Dato 3"]). Cada dato debe ser una sola oración corta (máx 15 palabras). NO uses HTML, NO uses "Sabías que".'; break;
       case 'image_url': promptGoal = 'Genera un prompt descriptivo y detallado en INGLÉS para DALL-E 3 que ilustre esta noticia. El JSON debe tener la clave "image_prompt".'; break;
-      default: promptGoal = `Genera una noticia completa TOTALMENTE EN ESPAÑOL. El JSON debe incluir: "title" (string en español), "content" (HTML string en español donde CADA párrafo es un <p>...), "category" (string en español: elige hasta 3 de [${existingCategories}] o crea nuevas si es necesario, sepáralas SIEMPRE con comas, NUNCA uses "y" o "and"), "tags" (string en español separado por comas), "summary" (string en español), "sidebar_facts" (un ARRAY de strings JSON válido con exactamente 3 datos curiosos breves. Ejemplo: ["Dato 1", "Dato 2", "Dato 3"]) y "image_prompt" (un prompt en inglés para generar la imagen de la noticia).`;
+      default: promptGoal = `Genera una noticia completa TOTALMENTE EN ESPAÑOL. El JSON debe incluir: "title" (string en español), "content" (HTML string en español donde CADA párrafo es un <p>...), "category" (string en español: elige hasta 3 de [${existingCategories}] o crea nuevas si es necesario, sepáralas SIEMPRE con comas, NUNCA uses "y" o "and", ej: "Política, Internacional"), "tags" (string en español separado por comas), "summary" (string en español), "sidebar_facts" (un ARRAY de strings JSON válido con exactamente 3 datos curiosos breves. Ejemplo: ["Dato 1", "Dato 2", "Dato 3"]) y "image_prompt" (un prompt en inglés para generar la imagen de la noticia).`;
     }
 
     const fullPrompt = `${systemPrompt}\n\nIdea/Contexto/Fuente: ${context}\n\nTarea: ${promptGoal}\n\nIMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido.`;
@@ -137,6 +137,15 @@ serve(async (req) => {
     } catch (e) {
       console.error('Error en generación de texto:', e);
       throw new Error(`Error al generar el texto: ${e.message}`);
+    }
+
+    // Sanitize category to ensure no " y " or " and " is used
+    if (generated.category) {
+      if (typeof generated.category === 'string') {
+        generated.category = generated.category.replace(/\s+y\s+/gi, ', ').replace(/\s+and\s+/gi, ', ').replace(/,\s*,/g, ',').trim();
+      } else if (Array.isArray(generated.category)) {
+        generated.category = generated.category.join(', ').replace(/\s+y\s+/gi, ', ').replace(/\s+and\s+/gi, ', ').replace(/,\s*,/g, ',').trim();
+      }
     }
 
     // IMAGE GENERATION LOGIC

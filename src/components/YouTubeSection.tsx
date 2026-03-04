@@ -19,7 +19,7 @@ const VideoCard = ({ video, isPlaying, onPlay }: { video: Video, isPlaying: bool
 
   return (
     <div 
-      className="group bg-slate-900/40 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/5 hover:border-primary/30 transition-all duration-300 shadow-sm hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1 block"
+      className="group bg-slate-900/40 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/5 hover:border-primary/30 transition-colors duration-300 shadow-sm hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1 block"
     >
       {/* Thumbnail Container */}
       {isPlaying ? (

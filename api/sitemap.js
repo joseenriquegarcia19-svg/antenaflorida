@@ -11,33 +11,36 @@ export default async function handler(req, res) {
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-  // Fetch dynamic routes
-  const [news, shows, podcasts, team, videos, reels] = await Promise.all([
-    supabase.from('news').select('slug, id, created_at').eq('is_published', true),
+  // Fetch dynamic routes (solo tablas con páginas de detalle)
+  const [news, shows, podcasts, team] = await Promise.all([
+    supabase.from('news').select('slug, id, created_at, updated_at').eq('is_published', true),
     supabase.from('shows').select('slug, id, created_at'),
     supabase.from('podcasts').select('slug, id, created_at'),
     supabase.from('team_members').select('slug, id, created_at'),
-    supabase.from('videos').select('id, created_at'),
-    supabase.from('reels').select('id, created_at'),
   ]);
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Static Routes -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <!-- Rutas estáticas (coinciden con las rutas reales de la web) -->
   <url>
     <loc>${baseUrl}/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>${baseUrl}/schedule</loc>
+    <loc>${baseUrl}/horario</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>${baseUrl}/news</loc>
+    <loc>${baseUrl}/noticias</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/noticias/secciones</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>${baseUrl}/programas</loc>
@@ -67,7 +70,42 @@ export default async function handler(req, res) {
   <url>
     <loc>${baseUrl}/equipo</loc>
     <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/invitados</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/servicios</loc>
+    <changefreq>monthly</changefreq>
     <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/emisora</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/patrocinadores</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/sorteos</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/eventos</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/trump</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
   </url>`;
 
   // Helper to add URL
@@ -81,11 +119,12 @@ export default async function handler(req, res) {
   </url>`;
   };
 
-  // 1. Dynamic News Items
+  // 1. Noticias (rutas reales: /noticias/:id o /noticias/:slug)
   news.data?.forEach(item => {
     const identifier = item.slug || item.id;
     if (identifier) {
-      addUrl(`/news/${identifier}`, item.created_at, 0.7);
+      const lastmod = item.updated_at || item.created_at;
+      addUrl(`/noticias/${identifier}`, lastmod, 0.8);
     }
   });
 
@@ -113,26 +152,12 @@ export default async function handler(req, res) {
     }
   });
 
-  // 4b. Dynamic Guests (from guests table - assuming it exists or using similar logic)
+  // 4b. Invitados (ruta real: /invitado/:slug)
   const { data: guests } = await supabase.from('guests').select('slug, id, created_at');
   guests?.forEach(item => {
     const identifier = item.slug || item.id;
     if (identifier) {
-      addUrl(`/invitado/${identifier}`, item.created_at, 0.5);
-    }
-  });
-
-  // 5. Dynamic Videos
-  videos.data?.forEach(item => {
-    if (item.id) {
-      addUrl(`/videos/${item.id}`, item.created_at, 0.5);
-    }
-  });
-
-  // 6. Dynamic Reels
-  reels.data?.forEach(item => {
-    if (item.id) {
-      addUrl(`/reels/${item.id}`, item.created_at, 0.5);
+      addUrl(`/invitado/${identifier}`, item.created_at, 0.6);
     }
   });
 

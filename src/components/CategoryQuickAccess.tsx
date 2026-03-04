@@ -176,7 +176,7 @@ export const CategoryQuickAccess: React.FC = () => {
               
               {/* Content */}
               <div className="relative z-10 flex flex-col items-center justify-center p-6 gap-3 sm:gap-4 md:gap-5 transition-transform duration-300 group-hover:-translate-y-2 w-full">
-                 <div className="size-12 sm:size-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center transition-all duration-500 group-hover:bg-primary group-hover:scale-110 shadow-lg group-hover:shadow-primary/50">
+                 <div className="size-12 sm:size-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center transition-colors duration-500 group-hover:bg-primary group-hover:scale-110 shadow-lg group-hover:shadow-primary/50">
                     {getCategoryIcon(cat.name, 28, "text-white/80 group-hover:text-background-dark transition-colors duration-500")}
                  </div>
 

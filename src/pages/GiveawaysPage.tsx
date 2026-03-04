@@ -46,7 +46,11 @@ export default function GiveawaysPage() {
 
   return (
     <div className="min-h-screen pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-      <SEO title="Sorteos y Concursos" />
+      <SEO
+        title="Sorteos y Concursos"
+        description="Participa en sorteos y concursos de Antena Florida. Premios, promociones y oportunidades para la audiencia."
+        keywords="sorteos, concursos, premios, promociones, antena florida"
+      />
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 uppercase tracking-tight">

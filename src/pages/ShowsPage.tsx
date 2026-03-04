@@ -147,7 +147,11 @@ export default function ShowsPage() {
 
   return (
     <div className="bg-slate-50 dark:bg-background-dark min-h-screen pt-6 pb-20">
-      <SEO title="Programas" />
+      <SEO
+        title="Programas"
+        description="Programas de radio en vivo de Antena Florida. Horarios, conductores y toda la programación."
+        keywords="programas, radio, horario, antena florida, programacion"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col gap-8 mb-12">
           <div 

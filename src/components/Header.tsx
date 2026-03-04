@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { supabase } from '../lib/supabase';
-import { isVideo } from '@/lib/utils';
+import { isVideo, DEFAULT_AVATAR_URL } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 
 import { NavMenu } from './header/NavMenu';
@@ -69,8 +69,13 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
         .select('image_url')
         .eq('id', user.team_member_id)
         .single();
-      if (data?.image_url) setProfileImage(data.image_url);
+      if (data?.image_url) {
+        setProfileImage(data.image_url);
+        return;
+      }
     }
+
+    setProfileImage(DEFAULT_AVATAR_URL);
   }, [user]);
 
    useEffect(() => {
@@ -83,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
       className={`w-full transition-all duration-300 relative z-[100] font-display ${
         isTransparent 
           ? 'bg-transparent border-none shadow-none' 
-          : 'bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl border-b border-slate-200/30 dark:border-white/10'
+          : 'bg-background-light dark:bg-background-dark/80 backdrop-blur-xl border-b border-slate-200/30 dark:border-white/10'
       }`}>
       
       {!isTransparent && (
@@ -109,16 +114,17 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
       )}
 
       
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 md:h-20 flex items-center justify-between z-[101]">
-        <div className="flex items-center gap-2 sm:gap-4 flex-1">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 md:h-20 flex flex-nowrap items-center justify-between gap-2 sm:gap-4 xl:gap-16 z-[101] min-w-0">
+        {/* Logo/Título — margen derecho para separar del menú */}
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink min-w-0 pr-2 sm:pr-4 xl:pr-16 2xl:pr-24">
           <Link to="/" className="flex items-center gap-2 sm:gap-3 flex-shrink-0 group">
-            <div className={`size-10 sm:size-12 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 shadow-lg ${
+            <div className={`size-9 sm:size-11 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 shadow-lg ${
               isVideo(config?.logo_url) ? 'bg-white dark:bg-black border border-slate-200 dark:border-white/10' : 'bg-transparent border-0'
             }`}>
               <Logo className="w-full h-full object-cover scale-110" />
             </div>
             <div className="flex flex-col min-w-0 max-w-fit pr-1 sm:pr-4">
-              <h2 className="text-[1.1rem] sm:text-3xl font-black italic tracking-tighter uppercase text-slate-900 dark:text-white leading-none whitespace-normal group-hover:opacity-80 transition-opacity">
+              <h2 className="text-base sm:text-2xl font-black italic tracking-tighter uppercase text-slate-900 dark:text-white leading-none whitespace-normal group-hover:opacity-80 transition-opacity">
                 {config?.site_name ? (
                   <>
                     {config.site_name.split(' ').map((word, i) => (
@@ -131,26 +137,30 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
                   <><span className="text-primary">ANTENA</span> <span className="text-primary-orange">FLORIDA</span></>
                 )}
               </h2>
-              <span className="text-[8px] sm:text-[12px] font-bold text-primary tracking-[0.2em] uppercase whitespace-normal leading-none mt-1">
+              <span className="text-[6px] sm:text-[9px] font-bold text-primary tracking-[0.12em] uppercase whitespace-normal leading-none mt-0.5">
                 {config?.slogan || 'La señal que nos une'}
               </span>
             </div>
           </Link>
         </div>
 
-        {/* Desktop Navigation Menu (Hidden on mobile) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-full">
-            <NavMenu mobileOpen={mobileMenuOpen} setMobileOpen={setMobileMenuOpen} />
+        {/* Desktop Navigation Menu — centro con flex-1; márgenes laterales para separar de logo e iconos */}
+        <div className="hidden xl:flex flex-1 items-center justify-center min-w-0 px-8 xl:px-16 2xl:px-20 shrink-0 basis-0 relative z-10">
+          <NavMenu mobileOpen={mobileMenuOpen} setMobileOpen={setMobileMenuOpen} />
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-4 flex-shrink-0 pl-1 sm:pl-4 lg:pl-8 ml-auto">
+        {/* Iconos/Sesión — anclados a la derecha; padding derecho con safe-area para que el icono de perfil no se corte en móvil */}
+        <div 
+          className="flex items-center gap-1.5 sm:gap-4 flex-shrink-0 pl-2 sm:pl-4 xl:pl-16 2xl:pl-24"
+          style={{ paddingRight: 'max(0.75rem, env(safe-area-inset-right))' }}
+        >
           <button
             type="button"
             aria-label="Buscar"
             onClick={() => setSearchOpen(true)}
-            className="inline-flex items-center justify-center size-8 sm:size-10 rounded-full bg-slate-200/50 dark:bg-black/40 backdrop-blur-md text-slate-700 dark:text-white hover:bg-slate-300/50 dark:hover:bg-black/60 transition-colors shadow-sm"
+            className="inline-flex items-center justify-center size-7 sm:size-8 rounded-full bg-primary backdrop-blur-md text-white hover:opacity-90 transition-colors shadow-sm"
           >
-            <Search size={18} className="sm:w-5 sm:h-5" />
+            <Search size={16} className="sm:w-4 sm:h-4" />
           </button>
           
           <ThemeToggle />
@@ -161,23 +171,23 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
             <Link
               to="/admin"
               title={role === 'admin' || role === 'editor' ? "Dashboard" : "Mi Perfil"}
-              className="inline-flex bg-primary text-background-dark p-0.5 rounded-full font-bold text-sm uppercase tracking-wider hover:scale-105 transition-transform neon-glow items-center justify-center size-9 sm:size-11 overflow-hidden"
+              className="inline-flex bg-primary text-background-dark rounded-full font-bold text-xs uppercase tracking-wider hover:scale-105 transition-transform neon-glow items-center justify-center size-8 sm:size-9 overflow-hidden flex-shrink-0 border-2 border-background-dark/20 box-border"
             >
               {profileImage ? (
                 <img 
                   src={profileImage} 
                   alt="Dashboard" 
                   className="w-full h-full object-cover rounded-full"
-                  width={44}
-                  height={44}
+                  width={36}
+                  height={36}
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                     setProfileImage(null);
                   }}
                 />
               ) : (
-                <div className="size-8 sm:size-10 rounded-full bg-white/10 flex items-center justify-center">
-                  <User size={18} className="sm:w-5 sm:h-5" />
+                <div className="size-full rounded-full bg-white/10 flex items-center justify-center">
+                  <User size={16} className="sm:w-4 sm:h-4" />
                 </div>
               )}
             </Link>
@@ -186,17 +196,17 @@ export const Header: React.FC<HeaderProps> = ({ onLoginClick, isTransparent }) =
               <button
                 type="button"
                 onClick={handleLoginClick}
-                className="hidden xl:inline-flex bg-primary text-background-dark px-5 md:px-6 py-2.5 rounded-full font-bold text-sm uppercase tracking-wider hover:scale-105 transition-transform neon-glow min-h-[44px]"
+                className="hidden xl:inline-flex bg-primary text-background-dark px-4 md:px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider hover:scale-105 transition-transform neon-glow min-h-[36px]"
               >
                 Iniciar Sesión
               </button>
               <button
                 type="button"
-                className="xl:hidden inline-flex items-center justify-center size-8 sm:size-10 rounded-full bg-slate-200/50 dark:bg-black/40 backdrop-blur-md text-slate-700 dark:text-white hover:bg-slate-300/50 dark:hover:bg-black/60 transition-colors shadow-sm"
+                className="xl:hidden inline-flex items-center justify-center size-7 sm:size-8 rounded-full bg-primary backdrop-blur-md text-white hover:opacity-90 transition-colors shadow-sm"
                 title="Iniciar Sesión"
                 onClick={handleLoginClick}
               >
-                <User size={18} className="sm:w-5 sm:h-5" />
+                <User size={16} className="sm:w-4 sm:h-4" />
               </button>
             </>
           )}

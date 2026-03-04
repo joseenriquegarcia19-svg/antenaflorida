@@ -59,8 +59,13 @@ export const SEO: React.FC<SEOProps> = ({
   
   const seoKeywords = keywords || config?.keywords || DEFAULT_SITE_CONFIG.keywords || '';
 
-  const seoImage = image || getValidImageUrl(config?.logo_url, 'logo') || DEFAULT_SITE_CONFIG.defaultImage;
+  const rawSeoImage = image || getValidImageUrl(config?.logo_url, 'logo') || DEFAULT_SITE_CONFIG.defaultImage;
   const seoUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
+  
+  // Ensure the image URL is absolute for Open Graph to work properly when sharing
+  const seoImage = rawSeoImage?.startsWith('/') && typeof window !== 'undefined' 
+    ? `${window.location.origin}${rawSeoImage}` 
+    : rawSeoImage;
 
   const HelmetAny = Helmet as any;
   const finalThemeColor = themeColor || (config?.top_bar_enabled && config?.top_bar_bg_color ? config.top_bar_bg_color : undefined);
@@ -90,6 +95,7 @@ export const SEO: React.FC<SEOProps> = ({
       <meta property="og:description" content={seoDescription} />
       <meta property="og:image" content={seoImage} />
       <meta property="og:site_name" content={siteName} />
+      <meta property="og:locale" content="es_US" />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />

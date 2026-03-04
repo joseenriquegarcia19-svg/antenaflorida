@@ -102,7 +102,8 @@ export default function StationPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-background-dark pb-20">
       <SEO 
         title="Nuestra Emisora" 
-        description={siteConfig?.station_description || undefined} 
+        description={siteConfig?.station_description || undefined}
+        keywords="emisora, radio, antena florida, sobre nosotros, la señal que nos une"
       />
 
       {/* Hero Section */}

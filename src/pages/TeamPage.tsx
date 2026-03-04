@@ -98,7 +98,11 @@ export default function TeamPage() {
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark pt-8 pb-20">
-      <SEO title="Nuestro Equipo" />
+      <SEO
+        title="Nuestro Equipo"
+        description="Conoce al equipo de Antena Florida: conductores, productores y profesionales que hacen posible la programación en vivo, noticias y podcasts."
+        keywords="equipo, antena florida, conductores, locutores, radio, programas"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 animate-fade-in-up">
           <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">

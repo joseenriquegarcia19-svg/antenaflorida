@@ -13,6 +13,7 @@ import { AdminModal } from '@/components/ui/AdminModal';
 import { YouTubeImportModal } from '@/components/admin/YouTubeImportModal';
 import { ManageSchedule } from '@/components/admin/ManageSchedule';
 import { ManageEpisodes } from '@/components/admin/ManageEpisodes';
+import { ManageTemporaryLives } from '@/components/admin/ManageTemporaryLives';
 import ManageShowComments from './ManageShowComments';
 import ManageGallery from './ManageGallery';
 import { logActivity, logError } from '@/lib/activityLogger';
@@ -87,13 +88,13 @@ export default function ManageStations() {
   const { setHeader } = useAdminHeader();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState<'stats' | 'programs' | 'schedule' | 'history' | 'messages'>(
-    (tabParam as 'stats' | 'programs' | 'schedule' | 'history' | 'messages') || 'stats'
+  const [activeTab, setActiveTab] = useState<'stats' | 'programs' | 'schedule' | 'history' | 'messages' | 'lives'>(
+    (tabParam as 'stats' | 'programs' | 'schedule' | 'history' | 'messages' | 'lives') || 'stats'
   );
 
   useEffect(() => {
-    if (tabParam && ['stats', 'programs', 'schedule', 'history', 'messages'].includes(tabParam)) {
-       setActiveTab(tabParam as 'stats' | 'programs' | 'schedule' | 'history' | 'messages');
+    if (tabParam && ['stats', 'programs', 'schedule', 'history', 'messages', 'lives'].includes(tabParam)) {
+       setActiveTab(tabParam as 'stats' | 'programs' | 'schedule' | 'history' | 'messages' | 'lives');
     }
   }, [tabParam]);
 
@@ -128,7 +129,8 @@ export default function ManageStations() {
       programs: { title: 'Programas', subtitle: 'Gestión de shows y contenido', icon: List },
       schedule: { title: 'Programación Semanal', subtitle: 'Horarios de transmisión y parrilla', icon: Calendar },
       history: { title: 'Historial', subtitle: 'Registro de transmisiones pasadas', icon: History },
-      messages: { title: 'Mensajes', subtitle: 'Interacción con la audiencia', icon: MessageSquare }
+      messages: { title: 'Mensajes', subtitle: 'Interacción con la audiencia', icon: MessageSquare },
+      lives: { title: 'Transmisiones temporales', subtitle: 'En vivos puntuales (YouTube, Facebook, etc.)', icon: Youtube }
     };
     const current = titles[activeTab] || titles.stats;
 
@@ -468,6 +470,16 @@ export default function ManageStations() {
               <p className="text-sm text-muted-foreground">Feedback y Comentarios</p>
             </div>
             <ManageShowComments />
+          </div>
+        )}
+
+        {activeTab === 'lives' && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="invisible h-0 overflow-hidden">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Transmisiones temporales</h2>
+              <p className="text-sm text-muted-foreground">En vivos puntuales que se muestran en la web hasta que los finalices</p>
+            </div>
+            <ManageTemporaryLives />
           </div>
         )}
 

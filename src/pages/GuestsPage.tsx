@@ -53,7 +53,11 @@ export default function GuestsPage() {
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark pt-8 pb-20">
-      <SEO title="Nuestros Invitados" />
+      <SEO
+        title="Nuestros Invitados"
+        description="Invitados y personalidades que han pasado por los micrófonos de Antena Florida. Entrevistas, programas especiales y contenido exclusivo."
+        keywords="invitados, entrevistas, antena florida, programas, personalidades"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 animate-fade-in-up">
           <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">

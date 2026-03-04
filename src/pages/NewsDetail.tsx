@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useThemeContext } from '@/contexts/ThemeContext';
-import { getValidImageUrl, embedVideoLinksInHtml } from '@/lib/utils';
+import { getValidImageUrl, embedVideoLinksInHtml, getDisplayName, DEFAULT_AVATAR_URL } from '@/lib/utils';
 import { PostGeneratorModal } from '@/components/ui/PostGeneratorModal';
 
 import { SponsorBanner } from '@/components/SponsorBanner';
@@ -55,6 +55,7 @@ interface Comment {
   created_at: string;
   user_id: string;
   parent_id?: string;
+  reactions?: Reaction[];
   profiles: {
     full_name: string | null;
     avatar_url: string | null;
@@ -75,6 +76,7 @@ export default function NewsDetail() {
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
 
   const [relatedNews, setRelatedNews] = useState<NewsItem[]>([]);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
@@ -132,6 +134,25 @@ export default function NewsDetail() {
     }
     */
   }, []);
+
+  // Cargar script de Twitter si hay embeds de Twitter en el contenido
+  useEffect(() => {
+    if (news?.content && (news.content.includes('twitter.com') || news.content.includes('x.com') || news.content.includes('pic.x.com'))) {
+      // Si el script de Twitter ya está cargado, decirle que renderice los nuevos widgets
+      // @ts-ignore
+      if (window.twttr && window.twttr.widgets) {
+        // @ts-ignore
+        window.twttr.widgets.load();
+      } else {
+        // Si no está, inyectar el script
+        const script = document.createElement('script');
+        script.src = "https://platform.twitter.com/widgets.js";
+        script.async = true;
+        script.charset = "utf-8";
+        document.body.appendChild(script);
+      }
+    }
+  }, [news?.content]);
 
   useEffect(() => {
     let isMounted = true;
@@ -249,7 +270,7 @@ export default function NewsDetail() {
 
         // Fetch secondary data
         const promises = [
-          supabase.from('news_comments').select('*, profiles(full_name, avatar_url)').eq('news_id', newsId).order('created_at', { ascending: false }),
+          supabase.from('news_comments').select('*, profiles(full_name, email, avatar_url)').eq('news_id', newsId).order('created_at', { ascending: false }),
           // Fetch more candidates for better scoring (increased from 5 to 20)
           supabase.from('news').select('*').eq('category', newsData.category).neq('id', newsId).limit(20),
           newsData.tags && newsData.tags.length > 0 
@@ -327,22 +348,22 @@ export default function NewsDetail() {
           })
           .map(entry => entry.item);
 
-        if (relatedItems.length < 3) {
+        if (relatedItems.length < 6) {
           const { data: latestData } = await supabase
             .from('news')
             .select('*')
             .neq('id', newsId)
             .order('created_at', { ascending: false })
-            .limit(6); 
-          
+            .limit(12);
+
           if (latestData) {
             const existingIds = new Set(relatedItems.map(item => item.id));
             const additional = latestData.filter(item => !existingIds.has(item.id));
             relatedItems = [...relatedItems, ...additional];
           }
         }
-        
-        setRelatedNews(relatedItems.slice(0, 3));
+
+        setRelatedNews(relatedItems.slice(0, 6));
 
         // --- FETCH THREAD NEWS (Recursive-like logic) ---
         const getAllThreadNews = async (currentNewsId: string, currentParentId: string | null) => {
@@ -409,6 +430,13 @@ export default function NewsDetail() {
     return () => clearInterval(interval);
   }, [facts.length]);
 
+  const incrementShareCount = useCallback(() => {
+    if (!news?.id) return;
+    supabase.rpc('increment_news_shares', { row_id: news.id }).then(({ error }) => {
+      if (error) console.error('Error incrementing shares:', error);
+      else setNews(prev => prev ? { ...prev, shares: (prev.shares ?? 0) + 1 } : null);
+    });
+  }, [news?.id]);
 
   const handleReaction = async (emoji: string) => {
     if (!session?.user || !news?.id) {
@@ -499,6 +527,55 @@ export default function NewsDetail() {
     handleReaction(emoji.native);
   };
 
+  const handleCommentReaction = async (commentId: string, emoji: string) => {
+    if (!session?.user) {
+      toast('Inicia sesión para reaccionar', 'info');
+      return;
+    }
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    const oldReactions = [...(comment.reactions || [])];
+    let newReactions = JSON.parse(JSON.stringify(oldReactions)) as Reaction[];
+    const existingReaction = newReactions.find(r => r.emoji === emoji);
+    const userReactedWithThis = existingReaction?.users.includes(session.user.id);
+
+    if (userReactedWithThis) {
+      if (existingReaction) {
+        existingReaction.users = existingReaction.users.filter(id => id !== session.user.id);
+        existingReaction.count--;
+        if (existingReaction.count <= 0) newReactions = newReactions.filter(r => r.emoji !== emoji);
+      }
+      const { error } = await supabase.from('news_comment_reactions').delete().match({ comment_id: commentId, user_id: session.user.id });
+      if (error) {
+        console.error('Error al quitar reacción en comentario:', error);
+        toast('No se pudo quitar la reacción', 'error');
+        setComments(prev => prev.map(c => c.id === commentId ? { ...c, reactions: oldReactions } : c));
+        return;
+      }
+    } else {
+      newReactions.forEach(r => {
+        if (r.users.includes(session.user.id)) { r.users = r.users.filter(id => id !== session.user.id); r.count--; }
+      });
+      newReactions = newReactions.filter(r => r.count > 0);
+      const target = newReactions.find(r => r.emoji === emoji);
+      if (target) { target.users.push(session.user.id); target.count++; }
+      else newReactions.push({ emoji, count: 1, users: [session.user.id] });
+      const { error } = await supabase.from('news_comment_reactions').upsert(
+        { comment_id: commentId, user_id: session.user.id, emoji },
+        { onConflict: 'comment_id, user_id' }
+      );
+      if (error) {
+        console.error('Error al guardar reacción en comentario:', error);
+        toast('No se pudo guardar la reacción. ¿Ejecutaste la migración de reacciones en comentarios?', 'error');
+        setComments(prev => prev.map(c => c.id === commentId ? { ...c, reactions: oldReactions } : c));
+        return;
+      }
+    }
+    setComments(prev => prev.map(c => c.id === commentId ? { ...c, reactions: newReactions } : c));
+    setReactionPickerFor(null);
+  };
+
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session?.user || !news?.id || !newComment.trim() || submittingComment) return;
@@ -513,7 +590,7 @@ export default function NewsDetail() {
           content: newComment.trim(),
           parent_id: replyTo?.id || null
         })
-        .select('*, profiles(full_name, avatar_url)')
+        .select('*, profiles(full_name, email, avatar_url)')
         .single();
 
       if (error) throw error;
@@ -555,13 +632,6 @@ export default function NewsDetail() {
   const shareUrl = window.location.href;
 
   const handleShare = async () => {
-    // Track share in DB
-    if (news?.id) {
-       supabase.rpc('increment_news_shares', { row_id: news.id }).then(({ error }) => {
-         if (error) console.error('Error incrementing shares:', error);
-       });
-    }
-
     if (navigator.share) {
       try {
         await navigator.share({
@@ -569,13 +639,21 @@ export default function NewsDetail() {
           text: cleanDescription,
           url: shareUrl,
         });
+        // Solo contar cuando el usuario eligió una opción y compartió (no canceló)
+        incrementShareCount();
       } catch (err) {
-        console.error('Error sharing:', err);
+        // AbortError = usuario cerró/canceló el diálogo → no incrementar
+        if ((err as Error)?.name !== 'AbortError') console.error('Error sharing:', err);
       }
     } else {
-      // Fallback to clipboard
-      navigator.clipboard.writeText(shareUrl);
-      alert('Enlace copiado al portapapeles');
+      // Fallback: copiar enlace; solo contar si se copió bien
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Enlace copiado al portapapeles');
+        incrementShareCount();
+      } catch (err) {
+        console.error('Error copying to clipboard:', err);
+      }
     }
   };
 
@@ -584,13 +662,14 @@ export default function NewsDetail() {
       <SEO 
         title={news.title}
         description={cleanDescription}
-        image={news.image_url}
+        image={getValidImageUrl(news.image_url, 'news', undefined, 1200, config)}
         url={shareUrl}
         type="article"
         keywords={news.tags?.join(', ') || news.category}
         schema={generateNewsSchema(news, config?.site_name || 'Antena Florida')}
         article={{
           publishedTime: news.created_at,
+          modifiedTime: news.updated_at || news.created_at,
           author: news.profiles?.full_name || undefined,
           section: news.category,
           tags: news.tags,
@@ -608,6 +687,9 @@ export default function NewsDetail() {
           </Link>
           
           <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500 dark:text-slate-400 tabular-nums" title="Veces compartido">
+              {(news.shares ?? 0).toLocaleString()}
+            </span>
             <button 
               onClick={handleShare}
               className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-900 dark:text-white transition-colors"
@@ -808,6 +890,7 @@ export default function NewsDetail() {
         <div 
           className="news-content max-w-none mb-8"
           dangerouslySetInnerHTML={{ __html: embedVideoLinksInHtml(news.content) }}
+          style={{ overflowWrap: 'break-word', wordWrap: 'break-word', wordBreak: 'break-word' }}
         />
 
 
@@ -1051,7 +1134,7 @@ export default function NewsDetail() {
                             />
                           </div>
                           <span className="font-black text-slate-900 dark:text-white">
-                            {comment.profiles?.full_name || 'Usuario'}
+                            {getDisplayName(comment.profiles)}
                           </span>
                         </div>
                         <div className="flex items-center gap-4">
@@ -1074,6 +1157,39 @@ export default function NewsDetail() {
                       <p className="text-slate-600 dark:text-white/70 leading-relaxed">
                         {comment.content}
                       </p>
+                      {/* Reacciones al comentario */}
+                      {session && (
+                        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-white/5">
+                          {(comment.reactions || []).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {[...(comment.reactions || [])].sort((a, b) => b.count - a.count).map((r) => {
+                                const hasReacted = r.users.includes(session?.user?.id || '');
+                                return (
+                                  <button
+                                    key={r.emoji}
+                                    onClick={() => handleCommentReaction(comment.id, r.emoji)}
+                                    className={`flex items-center gap-1 px-2 py-1 rounded-full text-sm transition-all border ${
+                                      hasReacted ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-slate-100 dark:bg-white/5 border-transparent hover:bg-slate-200 dark:hover:bg-white/10'
+                                    }`}
+                                  >
+                                    <span>{r.emoji}</span>
+                                    <span className="text-xs font-bold">{r.count}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setReactionPickerFor(reactionPickerFor === comment.id ? null : comment.id)}
+                              className="flex items-center gap-1 px-2 py-1 rounded-full text-slate-500 dark:text-white/40 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/5 text-sm transition-all"
+                            >
+                              <Smile size={16} /> Reaccionar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Replies */}
@@ -1083,16 +1199,16 @@ export default function NewsDetail() {
                           <div className="flex items-center gap-2">
                             <div className="size-8 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden flex-shrink-0">
                               <img 
-                                src={reply.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(reply.profiles?.full_name || 'User')}&background=random`} 
+                                src={reply.profiles?.avatar_url || DEFAULT_AVATAR_URL} 
                                 alt={reply.profiles?.full_name || 'User'} 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(reply.profiles?.full_name || 'User')}&background=random`;
+                                  e.currentTarget.src = DEFAULT_AVATAR_URL;
                                 }}
                               />
                             </div>
                             <span className="text-sm font-black text-slate-900 dark:text-white">
-                              {reply.profiles?.full_name || 'Usuario'}
+                              {getDisplayName(reply.profiles)}
                             </span>
                           </div>
                           <span className="text-[10px] text-slate-400 dark:text-white/30 uppercase tracking-widest font-bold">
@@ -1102,6 +1218,39 @@ export default function NewsDetail() {
                         <p className="text-sm text-slate-600 dark:text-white/70 leading-relaxed">
                           {reply.content}
                         </p>
+                        {/* Reacciones a la respuesta */}
+                        {session && (
+                          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
+                            {(reply.reactions || []).length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {[...(reply.reactions || [])].sort((a, b) => b.count - a.count).map((r) => {
+                                  const hasReacted = r.users.includes(session?.user?.id || '');
+                                  return (
+                                    <button
+                                      key={r.emoji}
+                                      onClick={() => handleCommentReaction(reply.id, r.emoji)}
+                                      className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs transition-all border ${
+                                        hasReacted ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-slate-100 dark:bg-white/5 border-transparent hover:bg-slate-200 dark:hover:bg-white/10'
+                                      }`}
+                                    >
+                                      <span>{r.emoji}</span>
+                                      <span className="font-bold">{r.count}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setReactionPickerFor(reactionPickerFor === reply.id ? null : reply.id)}
+                                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-slate-500 dark:text-white/40 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/5 text-xs transition-all"
+                              >
+                                <Smile size={14} /> Reaccionar
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1111,6 +1260,23 @@ export default function NewsDetail() {
               <p className="text-center text-slate-400 dark:text-white/30 py-8 italic">
                 Aún no hay comentarios. ¡Sé el primero en comentar!
               </p>
+            )}
+
+            {/* Un solo Picker para reacciones de comentarios/respuestas (evita error de hooks) */}
+            {reactionPickerFor && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setReactionPickerFor(null)} aria-hidden="true" />
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10">
+                  <Picker
+                    data={data}
+                    onEmojiSelect={(e: { native: string }) => {
+                      handleCommentReaction(reactionPickerFor, e.native);
+                    }}
+                    theme={isDark ? 'dark' : 'light'}
+                    locale="es"
+                  />
+                </div>
+              </>
             )}
           </div>
         </section>

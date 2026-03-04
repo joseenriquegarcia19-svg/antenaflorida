@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { 
   Plus, Trash, Edit, X, Eye, Share2, Sparkles, BarChart3, Newspaper,
   Heart, MessageSquare, FileText, Settings, Layout, Search, Check, Loader2, Link as LinkIcon, List, Tag, History as HistoryIcon,
-  AlertCircle, Save
+  AlertCircle, Save, Bot
 } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { MediaUpload } from '@/components/ui/MediaUpload';
@@ -16,8 +16,10 @@ import { AdminModal } from '@/components/ui/AdminModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { PostGeneratorModal } from '@/components/ui/PostGeneratorModal';
 import ManageComments from './ManageComments';
+import AgentDrafts from './AgentDrafts';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { useAdminHeader } from '@/contexts/AdminHeaderContext';
+import { useToast } from '@/contexts/ToastContext';
 
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -1324,13 +1326,26 @@ async function fetchAllUsedTagsFn() {
 }
 
 // --- MAIN COMPONENT ---
-const validTabs = ['stats', 'categories', 'tags', 'manager', 'comments', 'settings', 'gallery'] as const;
+const validTabs = ['stats', 'categories', 'tags', 'manager', 'drafts', 'comments', 'settings', 'gallery'] as const;
 type TabType = typeof validTabs[number];
 
 export default function ManageNews() {
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const { setHeader } = useAdminHeader();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const soundSuccessRef = React.useRef<HTMLAudioElement | null>(null);
+  const soundErrorRef = React.useRef<HTMLAudioElement | null>(null);
+  React.useEffect(() => {
+    soundSuccessRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
+    soundSuccessRef.current.volume = 0.5;
+    soundErrorRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3');
+    soundErrorRef.current.volume = 0.5;
+    return () => {
+      soundSuccessRef.current = null;
+      soundErrorRef.current = null;
+    };
+  }, []);
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   
@@ -1348,6 +1363,7 @@ export default function ManageNews() {
     const titles = {
       stats: { title: 'Noticias', subtitle: 'Rendimiento y alcance de tus artículos', icon: BarChart3 },
       manager: { title: 'Gestor de Noticias', subtitle: 'Administra, edita y crea nuevas noticias', icon: Newspaper },
+      drafts: { title: 'Borradores IA', subtitle: 'Noticias generadas en segundo plano', icon: Bot },
       categories: { title: 'Categorías', subtitle: 'Organiza el contenido por temas', icon: List },
       tags: { title: 'Etiquetas', subtitle: 'Optimiza la búsqueda con palabras clave', icon: Tag },
       comments: { title: 'Comentarios', subtitle: 'Modera la interacción de los usuarios', icon: MessageSquare },
@@ -1414,6 +1430,48 @@ export default function ManageNews() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingField, setGeneratingField] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [isDelegating, setIsDelegating] = useState(false);
+  const [delegateSuccess, setDelegateSuccess] = useState<string | null>(null);
+
+  const delegateToAgent = async () => {
+    if (!aiIdea.trim()) {
+      setGenerationError('Se requiere una idea o URL para delegar la tarea al agente.');
+      return;
+    }
+    
+    setIsDelegating(true);
+    try {
+      const user = session?.user;
+      if (!user) throw new Error('Usuario no autenticado');
+
+      // 1. Insert into queue
+      const { data: queueData, error: queueError } = await supabase
+        .from('news_drafts_queue')
+        .insert({
+          user_id: user.id,
+          prompt_url: aiIdea.trim(),
+          status: 'pending'
+        })
+        .select()
+        .single();
+        
+      if (queueError) throw queueError;
+      
+      // 2. Invoke the agent function
+      await supabase.functions.invoke('agent-news-queue', {
+        body: { draft_id: queueData.id }
+      });
+      
+      setDelegateSuccess('La tarea ha sido asignada al Agente IA. Recibirás una notificación cuando la noticia esté en Borradores.');
+      setGenerationError(null);
+      setAiIdea('');
+    } catch (err: any) {
+      console.error('Error delegando:', err);
+      setGenerationError(err.message || 'Error al delegar al agente.');
+    } finally {
+      setIsDelegating(false);
+    }
+  };
 
   // AI Batch Generation State
   const [showNewChoiceModal, setShowNewChoiceModal] = useState(false);
@@ -1422,6 +1480,8 @@ export default function ManageNews() {
   const [batchDrafts, setBatchDrafts] = useState<(Partial<NewsItem> & { uuid: string; status: 'pending' | 'processing' | 'success' | 'error'; url: string; error?: string })[]>([]);
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+  const [agentDraftId, setAgentDraftId] = useState<string | null>(null);
+  const [delegatingBatchUuid, setDelegatingBatchUuid] = useState<string | null>(null);
   
   // Thread Modal State
   const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
@@ -1625,10 +1685,16 @@ export default function ManageNews() {
         console.log('Inserción exitosa:', insertedData);
         const newId = insertedData?.[0]?.id;
         await logActivity('Crear Noticia', `Creó la noticia: ${data.title}${newId ? ` (ID: ${newId})` : ''}`);
+        
+        if (agentDraftId) {
+          // Delete from queue if it was an agent draft
+          await supabase.from('news_drafts_queue').delete().eq('id', agentDraftId);
+        }
       }
 
       setIsEditing(false);
       setCurrentId(null);
+      setAgentDraftId(null);
       reset();
       await fetchNews();
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
@@ -1715,6 +1781,64 @@ export default function ManageNews() {
     // setIsEditing(true); // Already set at start
   }
 
+  function verifyAgentDraft(draft: any) {
+    const result = draft.result_data || {};
+    
+    setValue('title', result.title || '');
+    
+    // Helper to ensure HTML paragraphs
+    const ensureHtml = (html: string) => {
+      if (!html) return '';
+      if (!html.includes('<p>') && html.includes('\n')) {
+        return html.split('\n').filter((p: string) => p.trim()).map((p: string) => `<p>${p.trim()}</p>`).join('');
+      }
+      return html;
+    };
+    
+    setValue('content', ensureHtml(result.content || ''));
+    
+    const sanitizedCategory = String(result.category || '').replace(/\s+y\s+/gi, ', ').replace(/\s+and\s+/gi, ', ').replace(/,\s*,/g, ',').trim();
+    setValue('category', sanitizedCategory || 'Noticia');
+    
+    setValue('image_url', result.image_url || '');
+    setValue('image_source', result.image_source || '');
+    setValue('image_source_url', draft.prompt_url || '');
+    setValue('summary', result.summary || '');
+    
+    const formatTags = (tags: string | string[]) => {
+      if (!tags) return '';
+      if (Array.isArray(tags)) return tags.join(', ');
+      return String(tags);
+    };
+    setValue('tags', formatTags(result.tags));
+
+    // Process sidebar facts
+    const rawContent = result.sidebar_content || result.sidebar_facts || '';
+    let facts: string[] = [];
+    if (Array.isArray(rawContent)) {
+       facts = rawContent.map((f: any) => String(f).trim());
+    } else if (rawContent) {
+       if (rawContent.includes('|')) {
+         facts = rawContent.split('|').map((f: string) => f.trim());
+       } else if (rawContent.includes('\n')) {
+         facts = rawContent.split('\n').map((f: string) => f.replace(/^\d+[.)-]\s*/, '').trim()).filter(Boolean);
+       } else {
+         facts = [rawContent];
+       }
+    }
+    
+    setValue('sidebar_fact_1', facts[0] || '');
+    setValue('sidebar_fact_2', facts[1] || '');
+    setValue('sidebar_fact_3', facts[2] || '');
+    setValue('sidebar_fact_4', facts[3] || '');
+    setValue('sidebar_fact_5', facts[4] || '');
+
+    // Set the draft ID into agentDraftId so it gets deleted when saved
+    setCurrentId(null);
+    setAgentDraftId(draft.id);
+    setIsEditing(true);
+  }
+
   const generateNews = async (targetField: string | null = null) => {
     // Helper to parse and set sidebar facts from various formats
     const parseAndSetSidebarFacts = (rawContent: unknown) => {
@@ -1790,16 +1914,47 @@ export default function ManageNews() {
     if (targetField) setGeneratingField(targetField);
 
     try {
-      console.log(`Invocando generate-news con target: ${targetField || 'full'}`);
-      const { data, error: funcError } = await supabase.functions.invoke('generate-news', {
-        body: { idea: promptSource, target: targetField }
-      });
+      let retryCount = 0;
+      const maxRetries = 3;
+      let generatedData = null;
+      let success = false;
 
-      if (funcError) throw new Error(funcError.message || 'Error al conectar con el servidor.');
-      if (data.error) throw new Error(data.error);
+      while (retryCount < maxRetries && !success) {
+        try {
+          console.log(`Invocando generate-news con target: ${targetField || 'full'} (Intento ${retryCount + 1})`);
+          const { data, error: funcError } = await supabase.functions.invoke('generate-news', {
+            body: { idea: promptSource, target: targetField }
+          });
+
+          if (funcError) throw new Error(funcError.message || 'Error al conectar con el servidor.');
+          if (data?.error) throw new Error(data.error);
+          
+          generatedData = data;
+          success = true;
+        } catch (err: unknown) {
+          const error = err as { message?: string };
+          const errMsg = error.message || '';
+          const isQuotaError = errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('rate limit');
+          
+          if (isQuotaError && retryCount < maxRetries - 1) {
+            retryCount++;
+            const match = errMsg.match(/retry in (\d+(\.\d+)?)s/i);
+            const waitTimeStr = match ? match[1] : '60';
+            const waitTime = Math.ceil(parseFloat(waitTimeStr)) + 1;
+            
+            for (let s = waitTime; s > 0; s--) {
+              setGenerationError(`Límite de cuota alcanzado. Reintentando en ${s}s... (Intento ${retryCount}/${maxRetries - 1})`);
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            setGenerationError(null);
+          } else {
+            throw err;
+          }
+        }
+      }
 
       // Handle response
-      const generated = data || {};
+      const generated = generatedData || {};
       console.log('Respuesta recibida de la IA:', generated);
       
       // Helper to handle tags (string or array)
@@ -1827,6 +1982,8 @@ export default function ManageNews() {
           // Use the robust parser for any kind of response for this field
           const rawContent = generated.sidebar_content || generated.sidebar_facts || generated.text || generated.content || '';
           parseAndSetSidebarFacts(rawContent);
+          toastSuccess('Datos de interés generados correctamente.');
+          soundSuccessRef.current?.play().catch(() => {});
           return; // Stop further processing for this specific field
         }
 
@@ -1856,6 +2013,8 @@ export default function ManageNews() {
         } else if (targetField) {
           setValue(targetField as keyof NewsForm, finalValue, { shouldDirty: true, shouldValidate: true });
         }
+        toastSuccess('Campo generado correctamente.');
+        soundSuccessRef.current?.play().catch(() => {});
       } else {
         // Full generation - Overwrite all fields
         console.log('Realizando asignación completa de campos...');
@@ -1883,12 +2042,17 @@ export default function ManageNews() {
         
         // Clear idea after full generation if successful
         setAiIdea('');
+        toastSuccess('Noticia generada correctamente.');
+        soundSuccessRef.current?.play().catch(() => {});
       }
       
     } catch (err: unknown) {
       const error = err as { message?: string };
       console.error('Error generating news:', error);
-      setGenerationError(error.message || 'Error al generar contenido.');
+      const errMsg = error.message || 'Error al generar contenido.';
+      setGenerationError(errMsg);
+      toastError('No se pudo generar la noticia. ' + errMsg);
+      soundErrorRef.current?.play().catch(() => {});
     } finally {
       setIsGenerating(false);
       setGeneratingField(null);
@@ -1915,14 +2079,45 @@ export default function ManageNews() {
         setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, status: 'processing', title: `Procesando enlace ${i+1}...` } : p));
         
         try {
-           const { data, error } = await supabase.functions.invoke('generate-news', {
-              body: { idea: draft.url, target: null }
-           });
+           let retryCount = 0;
+           const maxRetries = 3;
+           let generatedData = null;
+           let success = false;
+
+           while (retryCount < maxRetries && !success) {
+             try {
+                const { data, error } = await supabase.functions.invoke('generate-news', {
+                   body: { idea: draft.url, target: null }
+                });
+                
+                if (error) throw new Error(error.message);
+                if (data?.error) throw new Error(data.error);
+                
+                generatedData = data;
+                success = true;
+             } catch (err: unknown) {
+                const error = err as { message?: string };
+                const errMsg = error.message || '';
+                const isQuotaError = errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('rate limit');
+                
+                if (isQuotaError && retryCount < maxRetries - 1) {
+                  retryCount++;
+                  const match = errMsg.match(/retry in (\d+(\.\d+)?)s/i);
+                  const waitTimeStr = match ? match[1] : '60';
+                  const waitTime = Math.ceil(parseFloat(waitTimeStr)) + 1;
+                  
+                  for (let s = waitTime; s > 0; s--) {
+                    setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, title: `Límite cuota: ${s}s...` } : p));
+                    await new Promise(r => setTimeout(r, 1000));
+                  }
+                  setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, title: `Reintentando (${retryCount}/${maxRetries - 1})...` } : p));
+                } else {
+                  throw err;
+                }
+             }
+           }
            
-           if (error) throw new Error(error.message);
-           if (data?.error) throw new Error(data.error);
-           
-           const generated = data || {};
+           const generated = generatedData || {};
            
            const formatTags = (tags: string | string[]): string[] => {
              if (!tags) return [];
@@ -2046,6 +2241,38 @@ export default function ManageNews() {
      setIsEditing(true);
   };
 
+  const delegateBatchItemToAgent = async (draft: (Partial<NewsItem> & { uuid: string; status: 'pending' | 'processing' | 'success' | 'error'; url: string; error?: string })) => {
+    const url = (draft.url || '').trim();
+    if (!url) return;
+    const user = session?.user;
+    if (!user) {
+      setGenerationError('Usuario no autenticado.');
+      return;
+    }
+    setDelegatingBatchUuid(draft.uuid);
+    try {
+      const { data: queueData, error: queueError } = await supabase
+        .from('news_drafts_queue')
+        .insert({
+          user_id: user.id,
+          prompt_url: url,
+          status: 'pending'
+        })
+        .select()
+        .single();
+      if (queueError) throw queueError;
+      await supabase.functions.invoke('agent-news-queue', {
+        body: { draft_id: queueData.id }
+      });
+      setBatchDrafts(prev => prev.filter(p => p.uuid !== draft.uuid));
+    } catch (err: any) {
+      console.error('Error delegando al agente:', err);
+      setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, error: err.message || 'Error al delegar al agente.' } : p));
+    } finally {
+      setDelegatingBatchUuid(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
 
@@ -2149,8 +2376,29 @@ export default function ManageNews() {
                                 {draft.error && <p className="text-xs text-red-500 mt-2 p-2 bg-red-100/50 dark:bg-red-900/20 rounded">{draft.error}</p>}
                              </div>
                              
-                             {draft.status === 'success' && (
+                             {draft.status === 'pending' && (
                                 <div className="mt-auto pt-3 border-t border-slate-200 dark:border-white/10 flex justify-end">
+                                   <button 
+                                     onClick={() => delegateBatchItemToAgent(draft)}
+                                     disabled={delegatingBatchUuid !== null}
+                                     className="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50"
+                                   >
+                                      {delegatingBatchUuid === draft.uuid ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
+                                      {delegatingBatchUuid === draft.uuid ? 'Enviando...' : 'Enviar al agente'}
+                                   </button>
+                                </div>
+                             )}
+
+                             {draft.status === 'success' && (
+                                <div className="mt-auto pt-3 border-t border-slate-200 dark:border-white/10 flex justify-end gap-2">
+                                   <button 
+                                     onClick={() => delegateBatchItemToAgent(draft)}
+                                     disabled={delegatingBatchUuid !== null}
+                                     className="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50"
+                                   >
+                                      {delegatingBatchUuid === draft.uuid ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
+                                      Enviar al agente
+                                   </button>
                                    <button 
                                      onClick={() => editBatchDraft(draft)}
                                      className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
@@ -2161,19 +2409,58 @@ export default function ManageNews() {
                              )}
 
                              {draft.status === 'error' && (
-                                <div className="mt-auto pt-3 border-t border-slate-200 dark:border-white/10 flex justify-end">
+                                <div className="mt-auto pt-3 border-t border-slate-200 dark:border-white/10 flex justify-end gap-2">
+                                   <button 
+                                     onClick={() => delegateBatchItemToAgent(draft)}
+                                     disabled={delegatingBatchUuid !== null}
+                                     className="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50"
+                                   >
+                                      {delegatingBatchUuid === draft.uuid ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
+                                      Enviar al agente
+                                   </button>
                                    <button 
                                      onClick={async () => {
                                         setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, status: 'processing', title: 'Reintentando...', error: undefined } : p));
                                         try {
-                                           const { data, error } = await supabase.functions.invoke('generate-news', {
-                                              body: { idea: draft.url, target: null }
-                                           });
+                                           let retryCount = 0;
+                                           const maxRetries = 3;
+                                           let generatedData = null;
+                                           let success = false;
+
+                                           while (retryCount < maxRetries && !success) {
+                                             try {
+                                                const { data, error } = await supabase.functions.invoke('generate-news', {
+                                                   body: { idea: draft.url, target: null }
+                                                });
+                                                
+                                                if (error) throw new Error(error.message);
+                                                if (data?.error) throw new Error(data.error);
+                                                
+                                                generatedData = data;
+                                                success = true;
+                                             } catch (err: unknown) {
+                                                const error = err as { message?: string };
+                                                const errMsg = error.message || '';
+                                                const isQuotaError = errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('rate limit');
+                                                
+                                                if (isQuotaError && retryCount < maxRetries - 1) {
+                                                  retryCount++;
+                                                  const match = errMsg.match(/retry in (\d+(\.\d+)?)s/i);
+                                                  const waitTimeStr = match ? match[1] : '60';
+                                                  const waitTime = Math.ceil(parseFloat(waitTimeStr)) + 1;
+                                                  
+                                                  for (let s = waitTime; s > 0; s--) {
+                                                    setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, title: `Límite cuota: ${s}s...` } : p));
+                                                    await new Promise(r => setTimeout(r, 1000));
+                                                  }
+                                                  setBatchDrafts(prev => prev.map(p => p.uuid === draft.uuid ? { ...p, title: `Reintentando (${retryCount}/${maxRetries - 1})...` } : p));
+                                                } else {
+                                                  throw err;
+                                                }
+                                             }
+                                           }
                                            
-                                           if (error) throw new Error(error.message);
-                                           if (data?.error) throw new Error(data.error);
-                                           
-                                           const generated = data || {};
+                                           const generated = generatedData || {};
                                            const formatTags = (tags: string | string[]): string[] => {
                                              if (!tags) return [];
                                              if (Array.isArray(tags)) return tags;
@@ -2294,52 +2581,52 @@ export default function ManageNews() {
                 </div>
               )}
               {filteredNews.map(item => (
-                <div key={item.id} className="bg-white dark:bg-white/5 p-4 rounded-xl flex items-center justify-between border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-200 dark:bg-white/10 flex-shrink-0">
+                <div key={item.id} className="bg-white dark:bg-white/5 p-3 sm:p-4 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none min-w-0">
+                  <div className="flex items-start gap-2 sm:gap-4 min-w-0 flex-1">
+                    <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-slate-200 dark:bg-white/10 flex-shrink-0">
                       {item.image_url ? (
                         <img src={getValidImageUrl(item.image_url, 'news', undefined, 100)} alt={item.title} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-400">
-                          <FileText size={24} />
+                          <FileText className="w-4 h-4 sm:w-6 sm:h-6" size={24} />
                         </div>
                       )}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-slate-900 dark:text-white text-lg line-clamp-1">{item.title}</h3>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-lg line-clamp-1 min-w-0 flex-1 basis-full sm:basis-auto">{item.title}</h3>
                         {item.parent_id ? (
                           <button 
                             onClick={(e) => { e.stopPropagation(); setThreadRootId(item.parent_id || null); setIsThreadModalOpen(true); }}
-                            className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors" 
+                            className="flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-tighter hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors flex-shrink-0" 
                             title="Ver y gestionar hilo de noticias"
                           >
-                            <HistoryIcon size={12} />
+                            <HistoryIcon size={10} className="sm:w-3 sm:h-3" />
                             <span>Hilo</span>
                           </button>
                         ) : news.some(n => n.parent_id === item.id) ? (
                           <button 
                             onClick={(e) => { e.stopPropagation(); setThreadRootId(item.id); setIsThreadModalOpen(true); }}
-                            className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors" 
+                            className="flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-tighter hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex-shrink-0" 
                             title="Ver y gestionar hilo de noticias"
                           >
-                            <HistoryIcon size={12} />
+                            <HistoryIcon size={10} className="sm:w-3 sm:h-3" />
                             <span>Hilo (Raíz)</span>
                           </button>
                         ) : (
                           <button 
                             onClick={(e) => { e.stopPropagation(); setThreadRootId(item.id); setIsThreadModalOpen(true); }}
-                            className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-white/10 text-slate-400 dark:text-white/30 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-slate-200 dark:hover:bg-white/20 transition-colors" 
+                            className="flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 bg-slate-100 dark:bg-white/10 text-slate-400 dark:text-white/30 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-tighter hover:bg-slate-200 dark:hover:bg-white/20 transition-colors flex-shrink-0" 
                             title="Empezar o gestionar hilo"
                           >
-                            <HistoryIcon size={12} />
+                            <HistoryIcon size={10} className="sm:w-3 sm:h-3" />
                             <span>Gestionar Hilo</span>
                           </button>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5 sm:mt-1">
                         {item.category?.split(',').map(c => c.trim()).filter(Boolean).map((cat, idx) => (
-                          <span key={idx} className={`text-[10px] px-1.5 py-0.5 rounded font-black uppercase shadow-sm ${
+                          <span key={idx} className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded font-black uppercase shadow-sm ${
                             cat === 'Noticia' 
                               ? 'bg-primary text-white' 
                               : 'bg-slate-100 dark:bg-white/10 text-primary'
@@ -2347,52 +2634,52 @@ export default function ManageNews() {
                             {cat}
                           </span>
                         ))}
-                        <span className="text-slate-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+                        <span className="text-slate-400 dark:text-white/40 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-0.5 sm:gap-1">
                           • {formatDateTime(item.created_at, false)}
                         </span>
                         {item.profiles?.full_name && (
-                           <span className="text-slate-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest">
+                           <span className="text-slate-400 dark:text-white/40 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest truncate max-w-[100px] sm:max-w-none">
                              • Por {item.profiles.full_name}
                            </span>
                          )}
-                         <span className="text-slate-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
-                           • <Eye size={12} /> {item.views || 0}
+                         <span className="text-slate-400 dark:text-white/40 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-0.5 sm:gap-1">
+                           • <Eye size={10} className="sm:w-3 sm:h-3" /> {item.views || 0}
                          </span>
-                         <span className="text-slate-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
-                           • <Share2 size={12} /> {item.shares || 0}
+                         <span className="text-slate-400 dark:text-white/40 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-0.5 sm:gap-1">
+                           • <Share2 size={10} className="sm:w-3 sm:h-3" /> {item.shares || 0}
                          </span>
-                         <span className="text-slate-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
-                           • <Heart size={12} /> {item.reactions?.reduce((acc, r) => acc + r.count, 0) || 0}
+                         <span className="text-slate-400 dark:text-white/40 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-0.5 sm:gap-1">
+                           • <Heart size={10} className="sm:w-3 sm:h-3" /> {item.reactions?.reduce((acc, r) => acc + r.count, 0) || 0}
                          </span>
-                         <span className="text-slate-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
-                           • <MessageSquare size={12} /> {((item.news_comments?.[0] as unknown) as { count: number } | undefined)?.count || 0}
+                         <span className="text-slate-400 dark:text-white/40 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-0.5 sm:gap-1">
+                           • <MessageSquare size={10} className="sm:w-3 sm:h-3" /> {((item.news_comments?.[0] as unknown) as { count: number } | undefined)?.count || 0}
                          </span>
                        </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-end gap-1 sm:gap-2 flex-shrink-0 border-t border-slate-100 dark:border-white/5 pt-2 sm:pt-0 sm:border-0">
                     <a 
                       href={`/noticias/${item.slug || item.id}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="p-2 text-slate-400 dark:text-white/60 hover:text-primary transition-colors"
+                      className="p-1.5 sm:p-2 text-slate-400 dark:text-white/60 hover:text-primary transition-colors"
                       title="Ver noticia completa en la web"
                     >
-                      <Eye size={20} />
+                      <Eye size={18} className="sm:w-5 sm:h-5" />
                     </a>
                     <button 
                       onClick={() => { setSelectedNews(item); setIsGeneratorOpen(true); }} 
-                      className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors flex items-center gap-1"
+                      className="p-1.5 sm:p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors flex items-center gap-0.5 sm:gap-1"
                       title="Generar Post para Redes Sociales"
                     >
-                      <Share2 size={20} />
-                      <span className="hidden md:inline text-sm font-bold">Post</span>
+                      <Share2 size={18} className="sm:w-5 sm:h-5" />
+                      <span className="hidden md:inline text-xs sm:text-sm font-bold">Post</span>
                     </button>
-                    <button onClick={() => editItem(item)} className="p-2 text-slate-400 dark:text-white/60 hover:text-primary transition-colors" title="Editar noticia" aria-label="Editar noticia">
-                      <Edit size={20} />
+                    <button onClick={() => editItem(item)} className="p-1.5 sm:p-2 text-slate-400 dark:text-white/60 hover:text-primary transition-colors" title="Editar noticia" aria-label="Editar noticia">
+                      <Edit size={18} className="sm:w-5 sm:h-5" />
                     </button>
-                    <button onClick={() => deleteItem(item.id)} className="p-2 text-slate-400 dark:text-white/60 hover:text-red-500 transition-colors" title="Eliminar noticia" aria-label="Eliminar noticia">
-                      <Trash size={20} />
+                    <button onClick={() => deleteItem(item.id)} className="p-1.5 sm:p-2 text-slate-400 dark:text-white/60 hover:text-red-500 transition-colors" title="Eliminar noticia" aria-label="Eliminar noticia">
+                      <Trash size={18} className="sm:w-5 sm:h-5" />
                     </button>
                   </div>
                 </div>
@@ -2513,6 +2800,13 @@ export default function ManageNews() {
           </div>
         )}
 
+        {/* DRAFTS TAB */}
+        {activeTab === 'drafts' && (
+          <div className="space-y-4 animate-fade-in">
+            <AgentDrafts onPublish={verifyAgentDraft} />
+          </div>
+        )}
+
         {/* COMMENTS TAB */}
         {activeTab === 'comments' && (
           <div className="space-y-4 animate-fade-in">
@@ -2590,7 +2884,26 @@ export default function ManageNews() {
                     </button>
                    </div>
                 </div>
-                {generationError && <p className="text-red-500 text-xs font-bold bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-900/30">{generationError}</p>}
+                {generationError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30 flex flex-col gap-2">
+                    <p className="text-red-500 text-xs font-bold flex items-center gap-1"><AlertCircle size={14} /> {generationError}</p>
+                    <button
+                      type="button"
+                      onClick={delegateToAgent}
+                      disabled={isDelegating}
+                      className="text-xs bg-red-100 dark:bg-red-900/50 hover:bg-red-200 dark:hover:bg-red-900 text-red-700 dark:text-red-300 py-1.5 px-3 rounded font-bold flex items-center justify-center gap-2 transition-colors w-fit disabled:opacity-50"
+                    >
+                      {isDelegating ? <Loader2 size={14} className="animate-spin" /> : <Bot size={14} />}
+                      {isDelegating ? 'Delegando...' : 'Dejar que el Agente IA lo intente en segundo plano'}
+                    </button>
+                  </div>
+                )}
+                {delegateSuccess && (
+                  <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-100 dark:border-green-900/30 flex items-center gap-2">
+                    <Check size={16} className="text-green-600" />
+                    <p className="text-green-700 dark:text-green-300 text-xs font-bold">{delegateSuccess}</p>
+                  </div>
+                )}
              </div>
           </div>
 
@@ -2907,7 +3220,7 @@ export default function ManageNews() {
                   Generar
                 </button>
               </div>
-              <div className="bg-white dark:bg-white/5 rounded-lg overflow-hidden text-slate-900 dark:text-white min-h-[450px]">
+              <div className="bg-white dark:bg-white/5 rounded-lg text-slate-900 dark:text-white min-h-[450px]">
                 <Controller
                   name="content"
                   control={control}
@@ -2919,13 +3232,14 @@ export default function ManageNews() {
                       className?: string;
                       modules?: Record<string, unknown>;
                       placeholder?: string;
+                      bounds?: string | HTMLElement;
                     }>;
                     return (
                       <ReactQuillComponent 
                         theme="snow"
                         value={field.value || ''} 
                         onChange={field.onChange}
-                        className="h-[400px] mb-12"
+                        className="h-[400px] mb-12 relative"
                         modules={{
                           toolbar: [
                             [{ 'header': [1, 2, 3, false] }],

@@ -12,6 +12,8 @@ import { getValidImageUrl } from '@/lib/utils';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { VideoModal } from '@/components/ui/VideoModal';
+import { useTemporaryLives } from '@/hooks/useTemporaryLives';
+import { useYoutubeLiveUrl } from '@/hooks/useYoutubeLiveUrl';
 
 export interface Show {
   id: string;
@@ -310,6 +312,10 @@ export default function ShowDetail() {
     return currentTime >= show.time && currentTime < effectiveEndTime;
   }, [show]);
 
+  const { temporaryLives } = useTemporaryLives(show?.id ?? null);
+  const { youtubeLiveUrl: autoYoutubeLiveUrl } = useYoutubeLiveUrl(show?.youtube_live_url ? undefined : show?.social_links?.youtube);
+  const effectiveYoutubeLiveUrl = show?.youtube_live_url ?? autoYoutubeLiveUrl;
+
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!show?.id || !newComment.author_name || !newComment.content || !session?.user?.id) return;
@@ -457,13 +463,13 @@ export default function ShowDetail() {
                   </button>
 
                   {/* Live Streaming Buttons */}
-                  {isLiveNow && (show.youtube_live_url || show.facebook_live_url) && (
+                  {isLiveNow && (effectiveYoutubeLiveUrl || show.facebook_live_url || temporaryLives.length > 0) && (
                     <div className="flex flex-col gap-2">
-                      {show.youtube_live_url && (
+                      {effectiveYoutubeLiveUrl && (
                         <button
                           onClick={() => setVideoModal({ 
                             isOpen: true, 
-                            url: show.youtube_live_url || '', 
+                            url: effectiveYoutubeLiveUrl, 
                             title: `YouTube Live: ${show.title}`
                           })}
                           className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 animate-pulse"
@@ -483,6 +489,15 @@ export default function ShowDetail() {
                           <Facebook size={18} /> Ver en Facebook Live
                         </button>
                       )}
+                      {temporaryLives.map((live) => (
+                        <button
+                          key={live.id}
+                          onClick={() => setVideoModal({ isOpen: true, url: live.url, title: live.title })}
+                          className="w-full py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 animate-pulse"
+                        >
+                          <Video size={18} /> {live.title}
+                        </button>
+                      ))}
                     </div>
                   )}
 

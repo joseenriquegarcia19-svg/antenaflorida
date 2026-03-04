@@ -9,6 +9,7 @@ import { AdminModal } from '@/components/ui/AdminModal';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { useToast } from '@/contexts/ToastContext';
 import { logActivity } from '@/lib/activityLogger';
+import { DEFAULT_AVATAR_URL, ALL_AVATARS_GALLERY, AVATAR_GALLERY_TOTAL } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import ManageGallery from './ManageGallery';
@@ -111,7 +112,7 @@ export default function ManageUsers() {
   const [logsLoading, setLogsLoading] = useState(false);
   const [hasMoreLogs, setHasMoreLogs] = useState(true);
   const [logsPage, setLogsPage] = useState(0);
-  const LOGS_PER_PAGE = 15;
+  const LOGS_PER_PAGE = 25;
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'editor' | 'user'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
@@ -121,6 +122,7 @@ export default function ManageUsers() {
   const selectedTeamMemberId = watch('team_member_id');
   const watchedAvatar = watch('avatar_url');
   const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
+  const [galleryModalMode, setGalleryModalMode] = useState<'avatars' | 'media'>('avatars');
   const editingProfile = profiles.find(p => p.id === editingId);
   const isEditingSuperAdmin = editingProfile?.super_admin;
 
@@ -388,7 +390,7 @@ export default function ManageUsers() {
             full_name: data.full_name,
             team_member_id: data.team_member_id,
             permissions: permissions,
-            avatar_url: data.avatar_url
+            avatar_url: data.avatar_url || DEFAULT_AVATAR_URL
           },
         });
 
@@ -486,7 +488,18 @@ export default function ManageUsers() {
         
         {activeTab === 'users' && (
           <button 
-            onClick={() => setEditingId('new')}
+            onClick={() => {
+              reset({
+                email: '',
+                full_name: '',
+                team_member_id: '',
+                role: 'user',
+                password: '',
+                permissions: { news: true, podcasts: false, stations: false, users: false, settings: false, videos: false, reels: false, gallery: false, promotions: false, sponsors: false, stats: false },
+                avatar_url: DEFAULT_AVATAR_URL
+              });
+              setEditingId('new');
+            }}
             className="bg-primary text-background-dark px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:brightness-110 transition-all shadow-lg shadow-primary/20 ml-auto md:ml-0"
           >
             <UserPlus size={20} /> Nuevo Usuario
@@ -588,7 +601,7 @@ export default function ManageUsers() {
               <ImageUpload
                 value={watchedAvatar}
                 onChange={(url) => setValue('avatar_url', url)}
-                onGalleryClick={() => setIsGalleryModalOpen(true)}
+                onGalleryClick={() => { setGalleryModalMode('media'); setIsGalleryModalOpen(true); }}
                 className="w-full max-w-[160px]"
                 aspectRatio="square"
                 rounded="full"
@@ -596,7 +609,7 @@ export default function ManageUsers() {
               />
               
               <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/10 w-full flex flex-col items-center">
-                <p className="text-xs text-slate-500 dark:text-white/60 mb-2 font-bold uppercase tracking-widest text-center animate-pulse">O Elige Un Avatar Básico</p>
+                <p className="text-xs text-slate-500 dark:text-white/60 mb-2 font-bold uppercase tracking-widest text-center">O elige un avatar</p>
                 <div className="flex gap-2 flex-wrap justify-center">
                   {[
                       'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
@@ -614,6 +627,14 @@ export default function ManageUsers() {
                           <img src={url} alt="Avatar option" className="w-full h-full object-cover" />
                       </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => { setGalleryModalMode('avatars'); setIsGalleryModalOpen(true); }}
+                    className="size-10 rounded-full border-2 border-dashed flex items-center justify-center transition-all border-slate-300 dark:border-white/20 text-slate-400 hover:border-primary hover:text-primary"
+                    title="Ver galería de avatares (radio, USA, Cuba, animales y más)"
+                  >
+                    <LayoutGrid size={18} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -951,8 +972,9 @@ export default function ManageUsers() {
                 </div>
 
                 <div className={`flex gap-1.5 justify-center shrink-0 ${viewMode === 'grid' ? 'border-t border-slate-100 dark:border-white/5 pt-3 mt-auto w-full' : 'border-l border-slate-100 dark:border-white/5 pl-3 ml-2'}`}>
-                  <button onClick={() => fetchUserActivity(profile.id, profile.email!)} className="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors" title="Ver Historial de Actividad">
+                  <button onClick={() => fetchUserActivity(profile.id, profile.email!)} className="flex items-center gap-1.5 px-2 py-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider" title="Ver todo lo que ha realizado este usuario">
                     <History size={16} />
+                    <span className="hidden sm:inline">Historial</span>
                   </button>
                   
                   <div className="flex items-center gap-1.5">
@@ -1032,7 +1054,7 @@ export default function ManageUsers() {
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900 dark:text-white">{activityModal.email}</p>
-              <p className="text-xs text-slate-500 dark:text-white/40">Registro de acciones recientes</p>
+              <p className="text-xs text-slate-500 dark:text-white/40">Todo lo que ha realizado este usuario. Usa &quot;Cargar más registros&quot; para ver el historial completo.</p>
             </div>
           </div>
 
@@ -1131,17 +1153,37 @@ export default function ManageUsers() {
       <AdminModal
         isOpen={isGalleryModalOpen}
         onClose={() => setIsGalleryModalOpen(false)}
-        title="Seleccionar Avatar de Galería"
-        maxWidth="max-w-6xl"
+        title={galleryModalMode === 'avatars' ? `Galería de avatares (${AVATAR_GALLERY_TOTAL} avatares)` : 'Seleccionar Avatar de Galería'}
+        maxWidth={galleryModalMode === 'avatars' ? 'max-w-4xl' : 'max-w-6xl'}
       >
-        <ManageGallery 
-          isGeneral={true}
-          hideSidebar={true}
-          onSelect={(url) => {
-            setValue('avatar_url', url);
-            setIsGalleryModalOpen(false);
-          }}
-        />
+        {galleryModalMode === 'avatars' ? (
+          <div className="p-3">
+            <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-3 justify-items-center max-h-[70vh] overflow-y-auto">
+              {ALL_AVATARS_GALLERY.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    setValue('avatar_url', url);
+                    setIsGalleryModalOpen(false);
+                  }}
+                  className={`w-14 h-14 md:w-16 md:h-16 rounded-full border-2 overflow-hidden transition-all flex-shrink-0 ${watchedAvatar === url ? 'border-primary ring-2 ring-primary/20 scale-105' : 'border-transparent hover:border-slate-300 dark:hover:border-white/20 hover:scale-105'}`}
+                >
+                  <img src={url} alt={`Avatar ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <ManageGallery 
+            isGeneral={true}
+            hideSidebar={true}
+            onSelect={(url) => {
+              setValue('avatar_url', url);
+              setIsGalleryModalOpen(false);
+            }}
+          />
+        )}
       </AdminModal>
     </div>
   );

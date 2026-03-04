@@ -169,7 +169,9 @@ export default function NewsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [page, setPage] = useState(0);
-  const ITEMS_PER_PAGE = 9;
+  const pageRef = React.useRef(0);
+  React.useEffect(() => { pageRef.current = page; }, [page]);
+  const ITEMS_PER_PAGE = 12;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [searchCategoryStats, setSearchCategoryStats] = useState<[string, number][]>([]);
@@ -295,7 +297,8 @@ export default function NewsPage() {
         setLoadingMore(true);
       }
 
-      const currentPage = reset ? 0 : page;
+      // Al cargar más, pedir la SIGUIENTE página (pageRef ya es la última cargada).
+      const currentPage = reset ? 0 : pageRef.current + 1;
       const from = currentPage * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
@@ -325,7 +328,7 @@ export default function NewsPage() {
       }
       
       if (count !== null) setTotalCount(count);
-      if (!reset) setPage(currentPage + 1);
+      if (!reset) setPage(currentPage);
       
     } catch (err) {
       console.error('Error fetching main news:', err);
@@ -333,7 +336,7 @@ export default function NewsPage() {
       setLoadingFeed(false);
       setLoadingMore(false);
     }
-  }, [page, selectedCategory, debouncedSearchTerm]);
+  }, [selectedCategory, debouncedSearchTerm]);
 
   useEffect(() => {
     fetchMainNews(true);
@@ -373,7 +376,11 @@ export default function NewsPage() {
 
   return (
     <>
-      <SEO title="Noticias" />
+      <SEO
+        title="Noticias"
+        description="Últimas noticias de Florida y el mundo. Actualidad, política, comunidad y más en Antena Florida."
+        keywords="noticias, florida, actualidad, antena florida, informacion"
+      />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12">
         <div className="mb-6">
           <ExchangeRateBar />

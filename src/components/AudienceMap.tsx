@@ -180,7 +180,7 @@ export function AudienceMap() {
     const el = scrollRef.current;
     if (!el || countries.length === 0) return;
 
-    const speed = 0.5; // pixels per frame
+    const speed = 1; // pixels per frame — animación más fluida
 
     const animate = () => {
       offsetRef.current += speed;
@@ -205,7 +205,31 @@ export function AudienceMap() {
     };
   }, [countries]);
 
-  if (loading || countries.length === 0) return null;
+  // Skeleton mientras carga (así la barra no "salta" cuando llegan los datos)
+  if (loading) {
+    return (
+      <section className="pt-6 pb-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded-full border border-slate-200 dark:border-white/10 overflow-hidden flex items-center w-full h-[72px] animate-pulse">
+            <div className="flex items-center gap-3 pl-6 pr-8 py-4 shrink-0">
+              <div className="size-[18px] rounded bg-slate-300 dark:bg-white/20" />
+              <div className="flex flex-col gap-1">
+                <div className="h-5 w-16 bg-slate-300 dark:bg-white/20 rounded" />
+                <div className="h-3 w-20 bg-slate-200 dark:bg-white/10 rounded" />
+              </div>
+            </div>
+            <div className="flex-1 flex items-center gap-4 px-4 overflow-hidden">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-4 w-24 bg-slate-200 dark:bg-white/10 rounded shrink-0" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (countries.length === 0) return null;
 
   return (
     <section className="pt-6 pb-2">

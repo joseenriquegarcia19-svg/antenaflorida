@@ -11,6 +11,7 @@ import { TeamComments } from '@/components/TeamComments';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { useAdminHeader } from '@/contexts/AdminHeaderContext';
 import { AdminModal } from '@/components/ui/AdminModal';
+import { DEFAULT_AVATAR_URL, ALL_AVATARS_GALLERY, AVATAR_GALLERY_TOTAL } from '@/lib/utils';
 import ManageGallery from './ManageGallery';
 
 interface TeamMember {
@@ -82,9 +83,8 @@ export default function Profile() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [chatSoundEnabled, setChatSoundEnabled] = useState(true);
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
-  const [showGallery, setShowGallery] = useState(false);
   const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
-  const [galleryTarget, setGalleryTarget] = useState<'account' | 'public'>('account');
+  const [galleryTarget, setGalleryTarget] = useState<'account' | 'public' | 'avatars'>('account');
 
   // Account Form State
   const [fullName, setFullName] = useState('');
@@ -199,7 +199,7 @@ export default function Profile() {
     });
     if (authUser) {
       setFullName(authUser.full_name || '');
-      setAvatarUrl(authUser.avatar_url || '');
+      setAvatarUrl(authUser.avatar_url || DEFAULT_AVATAR_URL);
       setChatSoundEnabled(authUser.accessibility_settings?.chat_sound_enabled ?? true);
       setTimeFormat(authUser.accessibility_settings?.time_format ?? '12h');
       if (authUser.team_member_id) {
@@ -224,8 +224,9 @@ export default function Profile() {
       setPublicImage(data.image_url || '');
       
       setAvatarUrl(prev => {
-        if (!prev && data.image_url) return data.image_url;
-        return prev;
+        if (prev && prev !== DEFAULT_AVATAR_URL) return prev;
+        if (data.image_url) return data.image_url;
+        return prev || DEFAULT_AVATAR_URL;
       });
 
       setAllowComments(data.allow_comments ?? true);
@@ -488,7 +489,8 @@ export default function Profile() {
 
                 <div className="md:col-span-3 space-y-6">
                   <div>
-                    <label className="block text-slate-500 dark:text-white/60 text-sm font-bold uppercase tracking-widest mb-4">Elegir Imagen Predeterminada</label>
+                    <label className="block text-slate-500 dark:text-white/60 text-sm font-bold uppercase tracking-widest mb-4">Elegir Imagen de Perfil</label>
+                    <p className="text-xs text-slate-400 dark:text-white/40 mb-3">Selecciona un avatar predeterminado o sube la tuya. Si no eliges, se mostrará uno por defecto.</p>
                     <div className="flex flex-wrap gap-4 items-start">
                       {DEFAULT_AVATARS.map((avatar) => (
                         <button
@@ -519,38 +521,17 @@ export default function Profile() {
                       ))}
                       <button
                          type="button"
-                         onClick={() => setShowGallery(!showGallery)}
-                         className={`size-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/20 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors gap-1 ${showGallery ? 'bg-primary/10 border-primary text-primary' : ''}`}
-                         title="Ver Galería Completa"
+                         onClick={() => { setGalleryTarget('avatars'); setIsGalleryModalOpen(true); }}
+                         className="size-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/20 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors gap-1 min-w-[80px]"
+                         title="Ver galería de avatares (radio, USA, Cuba, animales y más)"
                       >
                           <LayoutGrid size={20} />
-                          <span className="text-[9px] font-bold uppercase">Más</span>
+                          <span className="text-[9px] font-bold uppercase leading-tight text-center px-0.5">Galería</span>
                       </button>
                     </div>
 
-                    {showGallery && (
-                       <div className="mt-4 grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2 p-4 bg-slate-50 dark:bg-black/20 rounded-xl animate-fade-in border border-slate-200 dark:border-white/5">
-                           {[
-                               'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Precious',
-                               'https://api.dicebear.com/7.x/bottts/svg?seed=Buddy', 'https://api.dicebear.com/7.x/bottts/svg?seed=Caleb', 'https://api.dicebear.com/7.x/bottts/svg?seed=Lolia', 'https://api.dicebear.com/7.x/bottts/svg?seed=Milo',
-                               'https://api.dicebear.com/7.x/shapes/svg?seed=Circle', 'https://api.dicebear.com/7.x/shapes/svg?seed=Triangle', 'https://api.dicebear.com/7.x/shapes/svg?seed=Square', 'https://api.dicebear.com/7.x/shapes/svg?seed=Polygon',
-                               'https://api.dicebear.com/7.x/micah/svg?seed=Willow', 'https://api.dicebear.com/7.x/micah/svg?seed=Nala', 'https://api.dicebear.com/7.x/micah/svg?seed=Oliver', 'https://api.dicebear.com/7.x/micah/svg?seed=George',
-                                'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Fun', 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Smile', 'https://api.dicebear.com/7.x/thumbs/svg?seed=Thumbs', 'https://api.dicebear.com/7.x/thumbs/svg?seed=Up'
-                           ].map((url, i) => (
-                               <button
-                                  key={i}
-                                  type="button"
-                                  onClick={() => setAvatarUrl(url)}
-                                  className={`aspect-square rounded-full border-2 overflow-hidden transition-all ${avatarUrl === url ? 'border-primary ring-2 ring-primary/20 scale-110' : 'border-transparent hover:border-slate-300 dark:hover:border-white/20 hover:scale-105'}`}
-                               >
-                                   <img src={url} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
-                               </button>
-                           ))}
-                       </div>
-                   )}
-
                     <p className="text-[10px] text-slate-400 dark:text-white/30 mt-3 uppercase font-bold tracking-widest">
-                      Haz clic en una imagen para seleccionarla como tu avatar de {config?.site_name || 'Radio Wave'}
+                      Haz clic en una imagen para seleccionarla. <strong>Galería</strong> abre una ventana con todos los avatares.
                     </p>
                   </div>
 
@@ -940,21 +921,41 @@ export default function Profile() {
       <AdminModal
         isOpen={isGalleryModalOpen}
         onClose={() => setIsGalleryModalOpen(false)}
-        title="Seleccionar de Galería"
-        maxWidth="max-w-6xl"
+        title={galleryTarget === 'avatars' ? `Galería de avatares (${AVATAR_GALLERY_TOTAL} avatares)` : 'Seleccionar de Galería'}
+        maxWidth={galleryTarget === 'avatars' ? 'max-w-4xl' : 'max-w-6xl'}
       >
-        <ManageGallery 
-          isGeneral={true}
-          hideSidebar={true}
-          onSelect={(url) => {
-            if (galleryTarget === 'account') {
-              setAvatarUrl(url);
-            } else {
-              setPublicImage(url);
-            }
-            setIsGalleryModalOpen(false);
-          }}
-        />
+        {galleryTarget === 'avatars' ? (
+          <div className="p-3">
+            <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-3 justify-items-center max-h-[70vh] overflow-y-auto">
+              {ALL_AVATARS_GALLERY.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    setAvatarUrl(url);
+                    setIsGalleryModalOpen(false);
+                  }}
+                  className={`w-14 h-14 md:w-16 md:h-16 rounded-full border-2 overflow-hidden transition-all flex-shrink-0 ${avatarUrl === url ? 'border-primary ring-2 ring-primary/20 scale-105' : 'border-transparent hover:border-slate-300 dark:hover:border-white/20 hover:scale-105'}`}
+                >
+                  <img src={url} alt={`Avatar ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <ManageGallery 
+            isGeneral={true}
+            hideSidebar={true}
+            onSelect={(url) => {
+              if (galleryTarget === 'account') {
+                setAvatarUrl(url);
+              } else {
+                setPublicImage(url);
+              }
+              setIsGalleryModalOpen(false);
+            }}
+          />
+        )}
       </AdminModal>
     </div>
   );

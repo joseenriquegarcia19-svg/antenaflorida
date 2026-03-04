@@ -105,7 +105,7 @@ export const SponsorsSection: React.FC = () => {
                     <img 
                       src={sponsor.logo_url} 
                       alt={sponsor.name} 
-                      className="max-w-full max-h-full object-contain transition-transform group-hover:scale-110" 
+                      className="max-w-full max-h-full object-contain transition-transform group-hover:scale-110 mix-blend-multiply dark:mix-blend-normal dark:brightness-200 dark:contrast-125 group-hover:dark:brightness-100 group-hover:dark:contrast-100" 
                     />
                   </div>
 
@@ -140,7 +140,7 @@ export const SponsorsSection: React.FC = () => {
                           <img 
                             src={sponsor.logo_url} 
                             alt={sponsor.name} 
-                            className="max-w-full max-h-full object-contain transition-transform group-hover:scale-110" 
+                            className="max-w-full max-h-full object-contain transition-transform group-hover:scale-110 mix-blend-multiply dark:mix-blend-normal dark:brightness-200 dark:contrast-125 group-hover:dark:brightness-100 group-hover:dark:contrast-100" 
                           />
                         </div>
 
@@ -158,7 +158,7 @@ export const SponsorsSection: React.FC = () => {
               {/* Navigation Buttons */}
               <button 
                 onClick={() => emblaApi?.scrollPrev()}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white/10 backdrop-blur-md border border-white/10 p-2 rounded-full text-white/50 hover:text-white transition-all opacity-0 group-hover/carousel:opacity-100 group-hover/carousel:-translate-x-6 z-10"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white/10 backdrop-blur-md border border-white/10 p-2 rounded-full text-white/50 hover:text-white transition-colors opacity-0 group-hover/carousel:opacity-100 group-hover/carousel:-translate-x-6 z-10"
                 aria-label="Anterior"
                 title="Anterior"
               >
@@ -166,7 +166,7 @@ export const SponsorsSection: React.FC = () => {
               </button>
               <button 
                 onClick={() => emblaApi?.scrollNext()}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white/10 backdrop-blur-md border border-white/10 p-2 rounded-full text-white/50 hover:text-white transition-all opacity-0 group-hover/carousel:opacity-100 group-hover/carousel:translate-x-6 z-10"
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white/10 backdrop-blur-md border border-white/10 p-2 rounded-full text-white/50 hover:text-white transition-colors opacity-0 group-hover/carousel:opacity-100 group-hover/carousel:translate-x-6 z-10"
                 aria-label="Siguiente"
                 title="Siguiente"
               >

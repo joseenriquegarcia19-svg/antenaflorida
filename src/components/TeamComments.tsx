@@ -5,6 +5,7 @@ import { MessageSquare, Reply, Trash2, Send, AlertCircle, Search, Calendar, Chec
 import { Link, useLocation } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getDisplayName, DEFAULT_AVATAR_URL } from '@/lib/utils';
 
 interface Comment {
   id: string;
@@ -13,7 +14,8 @@ interface Comment {
   user_id: string;
   parent_id: string | null;
   profiles: {
-    full_name: string;
+    full_name: string | null;
+    email?: string | null;
     avatar_url?: string;
     role?: string;
     team_members?: {
@@ -59,6 +61,7 @@ export function TeamComments({ teamMemberId, showSearch = false, isPublicView = 
           *,
           profiles(
             full_name, 
+            email,
             role, 
             avatar_url,
             team_members(image_url)
@@ -271,11 +274,11 @@ export function TeamComments({ teamMemberId, showSearch = false, isPublicView = 
               <div className="flex gap-4">
                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center text-lg font-bold text-slate-500 dark:text-white/50 flex-shrink-0 overflow-hidden">
                   <img 
-                    src={comment.profiles?.avatar_url || comment.profiles?.team_members?.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.full_name || 'User')}&background=random`} 
-                    alt={comment.profiles?.full_name} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.full_name || 'User')}&background=random`;
+src={comment.profiles?.avatar_url || comment.profiles?.team_members?.image_url || DEFAULT_AVATAR_URL} 
+                                    alt={comment.profiles?.full_name} 
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_AVATAR_URL;
                     }}
                   />
                 </div>
@@ -284,7 +287,7 @@ export function TeamComments({ teamMemberId, showSearch = false, isPublicView = 
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-bold text-slate-900 dark:text-white block">{comment.profiles?.full_name || 'Usuario desconocido'}</span>
+                          <span className="font-bold text-slate-900 dark:text-white block">{getDisplayName(comment.profiles)}</span>
                           {comment.profiles?.role === 'admin' && (
                             <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-black uppercase rounded">Admin</span>
                           )}
@@ -343,11 +346,11 @@ export function TeamComments({ teamMemberId, showSearch = false, isPublicView = 
                         <div key={reply.id} className="flex gap-3">
                           <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center text-sm font-bold text-slate-500 dark:text-white/50 flex-shrink-0 overflow-hidden">
                             <img 
-                              src={reply.profiles?.avatar_url || reply.profiles?.team_members?.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(reply.profiles?.full_name || 'User')}&background=random`} 
+                              src={reply.profiles?.avatar_url || reply.profiles?.team_members?.image_url || DEFAULT_AVATAR_URL} 
                               alt={reply.profiles?.full_name} 
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(reply.profiles?.full_name || 'User')}&background=random`;
+                                e.currentTarget.src = DEFAULT_AVATAR_URL;
                               }}
                             />
                           </div>
@@ -356,7 +359,7 @@ export function TeamComments({ teamMemberId, showSearch = false, isPublicView = 
                               <div className="flex justify-between items-start mb-1">
                                 <div>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-bold text-sm text-slate-900 dark:text-white block">{reply.profiles?.full_name || 'Usuario desconocido'}</span>
+                                    <span className="font-bold text-sm text-slate-900 dark:text-white block">{getDisplayName(reply.profiles)}</span>
                                     {reply.profiles?.role === 'admin' && (
                                       <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-black uppercase rounded">Admin</span>
                                     )}

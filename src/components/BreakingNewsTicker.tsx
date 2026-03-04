@@ -44,7 +44,7 @@ export function BreakingNewsTicker({ isTransparent }: BreakingNewsTickerProps) {
     const el = scrollRef.current;
     if (!el || news.length === 0) return;
 
-    const speed = 0.5; // pixels per frame (~30px/sec at 60fps)
+    const speed = 1.2; // pixels per frame (~72px/sec at 60fps) — más fluido
 
     const animate = () => {
       offsetRef.current += speed;
@@ -78,17 +78,17 @@ export function BreakingNewsTicker({ isTransparent }: BreakingNewsTickerProps) {
   const duplicated = [...news, ...news];
 
   return (
-    <div className={`text-white py-2 sm:py-2.5 overflow-hidden relative z-40 group border-y border-white/5 transition-all duration-300 ${
+    <div className={`text-white py-2 sm:py-2.5 overflow-hidden relative z-40 group border-y border-white/5 transition-colors duration-300 backdrop-blur-sm ${
       isTransparent 
-        ? 'bg-gradient-to-r from-[#D97706]/90 via-[#F68B1F]/90 to-[#EA580C]/90 backdrop-blur-xl' 
-        : 'bg-gradient-to-r from-[#D97706]/95 via-[#F68B1F]/95 to-[#EA580C]/95 backdrop-blur-xl'
+        ? 'bg-gradient-to-r from-[#D97706]/90 via-[#F68B1F]/90 to-[#EA580C]/90' 
+        : 'bg-gradient-to-r from-[#D97706]/95 via-[#F68B1F]/95 to-[#EA580C]/95'
     }`}>
       {/* Shine Effect */}
       <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent w-full -skew-x-12 animate-shine opacity-50" />
       </div>
 
-      <div className="flex items-center gap-4 relative z-10 px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4 relative z-10">
         <div className="flex items-center gap-2 text-white font-black uppercase tracking-widest text-[10px] sm:text-xs whitespace-nowrap shrink-0">
           <AlertCircle size={14} strokeWidth={3} className="text-white animate-pulse" />
           <span>ÚLTIMA HORA</span>
@@ -96,7 +96,7 @@ export function BreakingNewsTicker({ isTransparent }: BreakingNewsTickerProps) {
 
         <div className="h-5 w-px bg-white/30 shrink-0" />
 
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative min-w-0">
           <div
             ref={scrollRef}
             className="flex items-center whitespace-nowrap py-1 will-change-transform"
@@ -126,7 +126,7 @@ export function BreakingNewsTicker({ isTransparent }: BreakingNewsTickerProps) {
 function BreakingNewsTickerSkeleton() {
   return (
     <div className="bg-gradient-to-r from-[#D97706] via-[#F68B1F] to-[#EA580C] text-white py-2 sm:py-2.5 overflow-hidden relative shadow-lg z-40 group border-y border-white/5">
-      <div className="flex items-center gap-4 relative z-10 px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4 relative z-10">
         <div className="flex items-center gap-2 text-white font-black uppercase tracking-widest text-[10px] sm:text-xs whitespace-nowrap shrink-0">
           <AlertCircle size={14} strokeWidth={3} className="text-white animate-pulse" />
           <span>ÚLTIMA HORA</span>

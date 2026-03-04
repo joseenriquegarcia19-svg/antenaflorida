@@ -12,6 +12,8 @@ import { ScheduleTimeline } from './ScheduleTimeline';
 import { supabase } from '../lib/supabase';
 import { Equalizer } from './ui/Equalizer';
 import { useColorExtraction } from '@/hooks/useColorExtraction';
+import { useTemporaryLives } from '@/hooks/useTemporaryLives';
+import { useYoutubeLiveUrl } from '@/hooks/useYoutubeLiveUrl';
 import { GENERIC_ARTISTS, GENERIC_PROGRAM_TITLES } from '../lib/constants';
 
 interface ShowComment {
@@ -141,6 +143,10 @@ export const Hero: React.FC = () => {
   const lastValidLiveTrackRef = useRef<any>(null);
 
   const { dynamicRgb } = useColorExtraction(currentTrack?.image_url);
+  const { temporaryLives } = useTemporaryLives(currentShow?.id ?? null);
+  const { youtubeLiveUrl: autoYoutubeLiveUrl } = useYoutubeLiveUrl(
+    currentShow?.youtube_live_url ? undefined : currentShow?.social_links?.youtube
+  );
 
   interface DisplayShow {
     id: string;
@@ -231,12 +237,12 @@ export const Hero: React.FC = () => {
 
     // Check if the current show is a generic music block or a filler
     const genericTitles = ['musica', 'música', 'radio en vivo', 'la señal que nos une', 'antena florida', 'emisión en vivo'];
-    const isGenericMusic = currentShow && genericTitles.includes(currentShow.title.toLowerCase());
+    const isGenericMusic = currentShow && genericTitles.includes((currentShow.title ?? '').toLowerCase());
 
     if (liveTrack && isGenericMusic) {
       // Only update if we have a meaningful title or artist
-      const hasMeaningfulTrack = (liveTrack.title && !genericTitles.includes(liveTrack.title.toLowerCase())) || 
-                                (liveTrack.artist && !genericTitles.includes(liveTrack.artist.toLowerCase()));
+      const hasMeaningfulTrack = (liveTrack.title && !genericTitles.includes((liveTrack.title ?? '').toLowerCase())) || 
+                                (liveTrack.artist && !genericTitles.includes((liveTrack.artist ?? '').toLowerCase()));
 
       if (hasMeaningfulTrack) {
         // Update sticky ref
@@ -302,7 +308,8 @@ export const Hero: React.FC = () => {
 
   const isPromotion = !!(displayShow && displayShow.is_promotion);
   const shouldShowTimeline = !isPromotion && todayShows.length > 0;
-  const isGenericMusicProgram = displayShow && !displayShow.is_promotion && GENERIC_PROGRAM_TITLES.includes(displayShow.title?.toLowerCase().trim());
+  const isGenericMusicProgram = displayShow && !displayShow.is_promotion && GENERIC_PROGRAM_TITLES.includes((displayShow.title?.toLowerCase() ?? '').trim());
+  const effectiveYoutubeLiveUrl = displayShow?.youtube_live_url ?? (displayShow?.id === currentShow?.id ? autoYoutubeLiveUrl : null);
 
   const fetchShowData = React.useCallback(async (showId: string) => {
     try {
@@ -413,7 +420,7 @@ export const Hero: React.FC = () => {
       if (!isUUID && displayShow?.title) {
         // Search in the todayShows list first (it's already in memory)
         const matchedShow = todayShows.find(s => 
-          s.title.toLowerCase() === displayShow.title.toLowerCase() && 
+          (s.title ?? '').toLowerCase() === (displayShow.title ?? '').toLowerCase() && 
           /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.id)
         );
         
@@ -592,52 +599,55 @@ export const Hero: React.FC = () => {
                     
                     {/* Star Rating & Comments Count */}
                     {(averageRating !== null || comments.length > 0 || realShowId) && (
-                      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 -mt-2 sm:-mt-3">
-                        {averageRating !== null && (
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star 
-                                key={star} 
-                                size={14} 
-                                className={star <= Math.round(averageRating) ? "fill-current" : "text-white/20"} 
-                                style={star <= Math.round(averageRating) ? { color: `rgb(${dynamicRgb})` } : {}}
-                              />
-
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-3 -mt-2 sm:-mt-3">
+                        <div className="flex items-center flex-wrap gap-x-3 gap-y-1">
                           {averageRating !== null && (
-                            <span className="text-white font-black text-sm">{averageRating.toFixed(1)}</span>
-                          )}
-                          
-                          {comments.filter(c => c.author_name !== 'Antena Florida AI').length > 0 && (
-                            <span className={`text-white/40 text-[9px] font-black uppercase tracking-widest ${averageRating !== null ? 'border-l border-white/10 pl-2' : ''} flex items-center gap-1`}>
-                              <MessageSquare size={10} style={{ color: `rgb(${dynamicRgb})` }} /> {comments.filter(c => c.author_name !== 'Antena Florida AI').length} {comments.filter(c => c.author_name !== 'Antena Florida AI').length === 1 ? 'Mensaje' : 'Mensajes'}
-                            </span>
-                          )}
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star 
+                                  key={star} 
+                                  size={14} 
+                                  className={star <= Math.round(averageRating) ? "fill-current" : "text-white/20"} 
+                                  style={star <= Math.round(averageRating) ? { color: `rgb(${dynamicRgb})` } : {}}
+                                />
 
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            {averageRating !== null && (
+                              <span className="text-white font-black text-sm">{averageRating.toFixed(1)}</span>
+                            )}
+                            
+                            {comments.filter(c => c.author_name !== 'Antena Florida AI').length > 0 && (
+                              <span className={`text-white/40 text-[9px] font-black uppercase tracking-widest ${averageRating !== null ? 'border-l border-white/10 pl-2' : ''} flex items-center gap-1`}>
+                                <MessageSquare size={10} style={{ color: `rgb(${dynamicRgb})` }} /> {comments.filter(c => c.author_name !== 'Antena Florida AI').length} {comments.filter(c => c.author_name !== 'Antena Florida AI').length === 1 ? 'Mensaje' : 'Mensajes'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                          {realShowId && (
+                        {realShowId && (
+                           <div>
                              <Link 
                                to={displayShow?.slug === 'acompaname-tonight' || displayShow?.slug === 'el-fogon-show'
                                  ? `/${displayShow.slug}`
                                  : `/programa/${realShowId}`}
-                               className={`hover:text-white transition-colors text-[9px] font-black uppercase tracking-widest ${comments.length > 0 || averageRating !== null ? 'border-l border-white/10 pl-2' : ''}`}
-                               style={{ color: `rgb(${dynamicRgb})` }}
+                               className="inline-flex items-center gap-2 bg-black/20 hover:bg-black/40 backdrop-blur-sm px-3.5 py-1.5 rounded-full border border-white/10 transition-colors text-[10px] font-black uppercase tracking-widest text-white shadow-sm"
                                title="Califica este programa y comparte tu opinión"
                              >
+                               <Star size={12} className="fill-current" style={{ color: `rgb(${dynamicRgb})` }} />
                                CALIFICA Y DEJA TU OPINIÓN AQUÍ
                              </Link>
-                          )}
-                        </div>
+                           </div>
+                        )}
                       </div>
                     )}
                     
                     <div className="flex flex-wrap items-center gap-3">
                        {displayShow.show_team_members && displayShow.show_team_members.length > 0 && !isGenericMusicProgram && 
-                        displayShow.title.toLowerCase() !== 'musica' && 
-                        displayShow.title.toLowerCase() !== 'música' ? (
+                        (displayShow.title ?? '').toLowerCase() !== 'musica' && 
+                        (displayShow.title ?? '').toLowerCase() !== 'música' ? (
                           <div className="flex items-center gap-2 bg-black/20 backdrop-blur-sm p-1.5 pr-4 rounded-full border border-white/10">
                              <div className="flex -space-x-1 sm:-space-x-2 overflow-hidden">
                                  {displayShow.show_team_members.map((p: { team_member?: { name: string, image_url?: string, slug?: string } }, i: number) => (
@@ -728,12 +738,12 @@ export const Hero: React.FC = () => {
 
                     {!isPromotion && (
                       <div className="flex flex-wrap gap-3 mt-2">
-                        {displayShow.youtube_live_url && (
+                        {effectiveYoutubeLiveUrl && (
                           <button
                             onClick={() => setVideoModal({ 
                               isOpen: true, 
-                              url: displayShow.youtube_live_url || '', 
-                              title: `YouTube Live: ${displayShow.title}`
+                              url: effectiveYoutubeLiveUrl, 
+                              title: `YouTube Live: ${displayShow?.title ?? ''}`
                             })}
                             className="flex items-center gap-2.5 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all shadow-lg hover:scale-105 animate-pulse border border-white/10"
                           >
@@ -746,21 +756,34 @@ export const Hero: React.FC = () => {
                         )}
 
                         {displayShow.facebook_live_url && (
+                            <button
+                              onClick={() => setVideoModal({ 
+                                isOpen: true, 
+                                url: displayShow.facebook_live_url || '', 
+                                title: `Facebook Live: ${displayShow.title}`
+                              })}
+                              className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all shadow-lg hover:scale-105 animate-pulse border border-white/10"
+                            >
+                              <Facebook size={16} />
+                              <span className="flex flex-col items-start leading-none">
+                                <span className="text-[9px] opacity-80 mb-0.5">Disponible Ahora</span>
+                                <span>Facebook Live</span>
+                              </span>
+                            </button>
+                        )}
+                        {temporaryLives.map((live) => (
                           <button
-                            onClick={() => setVideoModal({ 
-                              isOpen: true, 
-                              url: displayShow.facebook_live_url || '', 
-                              title: `Facebook Live: ${displayShow.title}`
-                            })}
-                            className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all shadow-lg hover:scale-105 animate-pulse border border-white/10"
+                            key={live.id}
+                            onClick={() => setVideoModal({ isOpen: true, url: live.url, title: live.title })}
+                            className="flex items-center gap-2.5 bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all shadow-lg hover:scale-105 animate-pulse border border-white/10"
                           >
-                            <Facebook size={16} />
+                            {live.platform === 'youtube' ? <Youtube size={16} /> : live.platform === 'facebook' ? <Facebook size={16} /> : <Activity size={16} />}
                             <span className="flex flex-col items-start leading-none">
-                              <span className="text-[9px] opacity-80 mb-0.5">Disponible Ahora</span>
-                              <span>Facebook Live</span>
+                              <span className="text-[9px] opacity-80 mb-0.5">Transmisión temporal</span>
+                              <span className="truncate max-w-[120px]">{live.title}</span>
                             </span>
                           </button>
-                        )}
+                        ))}
                       </div>
                     )}
                   </div>
@@ -771,7 +794,7 @@ export const Hero: React.FC = () => {
                       <div className="relative group/comment">
                         <div className="absolute inset-0 bg-primary/20 blur-xl rounded-2xl group-hover/comment:bg-primary/30 transition-colors animate-pulse" />
                         <div 
-                          className="relative bg-black/60 backdrop-blur-md border border-white/10 p-3 sm:p-4 rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.02] transition-all duration-700 ease-in-out"
+                          className="relative bg-black/80 border border-white/10 p-3 sm:p-4 rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.02] transition-transform duration-700 ease-in-out"
                           style={{ 
                             '--dynamic-color': `rgb(${dynamicRgb})`,
                             transition: 'all 0.7s ease-in-out'
@@ -875,7 +898,7 @@ export const Hero: React.FC = () => {
                   </span>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-white/50 font-bold text-[9px] uppercase tracking-widest truncate">
-                      { (currentTrack?.artist && GENERIC_ARTISTS.includes(currentTrack.artist.toLowerCase().trim())) || (currentShow?.title && GENERIC_PROGRAM_TITLES.includes(currentShow.title.toLowerCase().trim()))
+                      { (currentTrack?.artist && GENERIC_ARTISTS.includes((currentTrack.artist ?? '').toLowerCase().trim())) || (currentShow?.title && GENERIC_PROGRAM_TITLES.includes((currentShow.title ?? '').toLowerCase().trim()))
                         ? (config?.site_name || 'Antena Florida') 
                         : (currentTrack?.artist || currentShow?.host || 'Antena Florida') }
                     </span>

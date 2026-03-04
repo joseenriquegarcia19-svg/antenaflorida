@@ -170,7 +170,11 @@ export default function Schedule() {
 
   return (
     <div className="bg-slate-50 dark:bg-background-dark min-h-screen pt-6 pb-20">
-      <SEO title="Programación" />
+      <SEO
+        title="Programación"
+        description="Horario de programación de Antena Florida. Programas, horarios y emisión en vivo."
+        keywords="programacion, horario, programas, antena florida, emision"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col gap-8 mb-12">
           <div 

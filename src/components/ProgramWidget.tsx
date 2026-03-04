@@ -6,6 +6,8 @@ import { getValidImageUrl, formatTime } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { VideoModal } from './ui/VideoModal';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
+import { useTemporaryLives } from '@/hooks/useTemporaryLives';
+import { useYoutubeLiveUrl } from '@/hooks/useYoutubeLiveUrl';
 
 interface Program {
   id: string;
@@ -283,6 +285,9 @@ export const ProgramWidget: React.FC<ProgramWidgetProps> = ({
 
   const safeIndex = currentIndex >= 0 && currentIndex < programs.length ? currentIndex : 0;
   const currentProgram = programs[safeIndex];
+  const { temporaryLives } = useTemporaryLives(currentProgram?.id ?? null);
+  const { youtubeLiveUrl: autoYoutubeLiveUrl } = useYoutubeLiveUrl(currentProgram?.youtube_live_url ? undefined : currentProgram?.social_links?.youtube);
+  const effectiveYoutubeLiveUrl = currentProgram?.youtube_live_url ?? autoYoutubeLiveUrl;
 
   return (
     <div className={`flex flex-col gap-6 ${className}`}>
@@ -354,16 +359,16 @@ export const ProgramWidget: React.FC<ProgramWidgetProps> = ({
               </h4>
 
               {/* Live Video Buttons */}
-              {isLive(currentProgram) && (currentProgram.youtube_live_url || currentProgram.facebook_live_url) && (
+              {isLive(currentProgram) && (effectiveYoutubeLiveUrl || currentProgram.facebook_live_url || temporaryLives.length > 0) && (
                 <div className="flex flex-wrap gap-2 pt-2 pointer-events-auto">
-                  {currentProgram.youtube_live_url && (
+                  {effectiveYoutubeLiveUrl && (
                     <button
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         setVideoModal({ 
                           isOpen: true, 
-                          url: currentProgram.youtube_live_url || '', 
+                          url: effectiveYoutubeLiveUrl, 
                           title: `YouTube Live: ${currentProgram.title}`
                         });
                       }}
@@ -390,6 +395,20 @@ export const ProgramWidget: React.FC<ProgramWidgetProps> = ({
                       Facebook Live
                     </button>
                   )}
+                  {temporaryLives.map((live) => (
+                    <button
+                      key={live.id}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setVideoModal({ isOpen: true, url: live.url, title: live.title });
+                      }}
+                      className="flex items-center gap-1.5 bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-black uppercase text-[9px] tracking-wider transition-all shadow-lg animate-pulse"
+                    >
+                      <Youtube size={14} />
+                      {live.title}
+                    </button>
+                  ))}
                 </div>
               )}
               
@@ -427,14 +446,14 @@ export const ProgramWidget: React.FC<ProgramWidgetProps> = ({
                 <div className="flex gap-2">
                   <button
                     onClick={goToPrevious}
-                    className="p-2 md:p-3 rounded-xl bg-white/10 hover:bg-primary hover:text-background-dark transition-all text-white backdrop-blur-xl border border-white/10 group/btn"
+                    className="p-2 md:p-3 rounded-xl bg-white/10 hover:bg-primary hover:text-background-dark transition-colors text-white backdrop-blur-xl border border-white/10 group/btn"
                     title="Anterior"
                   >
                     <ChevronLeft size={20} className="group-hover/btn:-translate-x-1 transition-transform" />
                   </button>
                   <button
                     onClick={goToNext}
-                    className="p-2 md:p-3 rounded-xl bg-white/10 hover:bg-primary hover:text-background-dark transition-all text-white backdrop-blur-xl border border-white/10 group/btn"
+                    className="p-2 md:p-3 rounded-xl bg-white/10 hover:bg-primary hover:text-background-dark transition-colors text-white backdrop-blur-xl border border-white/10 group/btn"
                     title="Siguiente"
                   >
                     <ChevronRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />

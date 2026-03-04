@@ -1,0 +1,6 @@
+# Supabase project config (usado por CLI al desplegar).
+# Para que agent-news-queue no devuelva 401, debe invocarse sin verificación JWT
+# o redeployar con: supabase functions deploy agent-news-queue --no-verify-jwt
+
+[functions.agent-news-queue]
+verify_jwt = false

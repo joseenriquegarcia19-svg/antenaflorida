@@ -6,7 +6,7 @@ import { useSiteConfig } from '@/contexts/SiteConfigContext';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '../ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
-import { isVideo, getValidImageUrl } from '@/lib/utils';
+import { isVideo, getValidImageUrl, DEFAULT_AVATAR_URL } from '@/lib/utils';
 
 interface NavMenuProps {
   mobileOpen?: boolean;
@@ -88,9 +88,9 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
 
   return (
     <>
-      {/* Desktop Navigation */}
+      {/* Desktop Navigation — padding-inline en cada enlace; ya no centrado absoluto (el contenedor en Header usa justify-between) */}
       <nav 
-        className="hidden xl:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-6 lg:gap-8 h-full font-display"
+        className="flex flex-nowrap items-center gap-3 lg:gap-5 h-full font-display"
         aria-label="Navegación principal"
       >
         {navItems.map((item) => {
@@ -115,10 +115,10 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
                 {item.href ? (
                   <Link 
                     to={item.href}
-                    className={`text-sm font-bold uppercase tracking-widest transition-colors py-2 flex items-center gap-1 relative group/link ${
+                    className={`text-xs font-bold uppercase tracking-wider transition-colors py-2 px-3 flex items-center gap-1 relative group/link ${
                       isItemActive 
                         ? 'text-primary-orange' 
-                        : 'text-slate-900 dark:text-white hover:text-primary-orange dark:hover:text-primary-orange'
+                        : 'text-slate-900 hover:text-primary-orange'
                     }`}
                     aria-haspopup="true"
                     {...{ 'aria-expanded': openSubmenu === item.label ? 'true' : 'false' }}
@@ -127,22 +127,22 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
                   </Link>
                 ) : (
                   <button 
-                    className={`text-[15px] font-extrabold tracking-tight transition-all py-2.5 flex items-center gap-1.5 relative group/link ${
+                    className={`text-xs font-bold uppercase tracking-wider transition-all py-2 px-3 flex items-center gap-1.5 relative group/link ${
                       isItemActive 
                         ? 'text-primary-orange scale-105' 
-                        : 'text-slate-900/80 dark:text-white/80 hover:text-primary-orange dark:hover:text-primary-orange hover:scale-105'
+                        : 'text-slate-900 hover:text-primary-orange hover:scale-105'
                     }`}
                     aria-haspopup="true"
                     {...{ 'aria-expanded': openSubmenu === item.label ? 'true' : 'false' }}
                   >
                     {item.label}
-                    <svg className="w-3.5 h-3.5 transition-transform group-hover:rotate-180 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg className="w-3 h-3 transition-transform group-hover:rotate-180 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
                 )}
                 
-                <div className={`absolute top-full left-1/2 -translate-x-1/2 pt-2 w-48 transition-all duration-200 z-[9999] ${openSubmenu === item.label ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
+                <div className={`absolute top-full left-1/2 -translate-x-1/2 pt-2 w-48 transition-all duration-200 z-[110] ${openSubmenu === item.label ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
                    <div className="bg-white dark:bg-card-dark rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden">
                       {item.submenu.map((subItem) => {
                         const isSubActive = location.pathname === subItem.href || location.pathname.startsWith(subItem.href + '/');
@@ -173,11 +173,11 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
           return (
               <Link
               key={item.label}
-              className={`text-[15px] font-extrabold tracking-tight transition-all py-2.5 flex-shrink-0 relative group/link flex items-center gap-2 ${
+              className={`text-xs font-bold uppercase tracking-wider transition-all py-2 px-3 flex-shrink-0 relative group/link flex items-center gap-2 ${
                 item.isLive ? 'text-primary shadow-sm px-2 bg-primary/10 rounded-lg' : 
                 (isLinkActive 
                   ? 'text-primary-orange scale-105' 
-                  : 'text-slate-900/80 dark:text-white/80 hover:text-primary-orange dark:hover:text-primary-orange hover:scale-105')
+                  : 'text-slate-900 hover:text-primary-orange hover:scale-105')
               }`}
               to={item.href}
             >
@@ -329,17 +329,11 @@ export const NavMenu: React.FC<NavMenuProps> = ({ mobileOpen, setMobileOpen }) =
                     type="button"
                     className="w-full bg-primary text-background-dark px-6 py-4 rounded-xl font-black uppercase tracking-wider flex items-center justify-center gap-2 min-h-[52px] shadow-lg shadow-primary/20"
                   >
-                    {user?.avatar_url ? (
-                      <img 
-                        src={user.avatar_url} 
+                    <img 
+                        src={user?.avatar_url || DEFAULT_AVATAR_URL} 
                         alt="Profile" 
                         className="size-6 rounded-full object-cover bg-white/10"
                       />
-                    ) : (
-                      <div className="size-6 rounded-full bg-white/10 flex items-center justify-center">
-                        <User size={14} />
-                      </div>
-                    )}
                     {role === 'admin' || role === 'editor' ? 'Dashboard' : 'Mi Perfil'}
                   </button>
                 </Link>

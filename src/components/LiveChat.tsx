@@ -9,7 +9,7 @@ import data from '@emoji-mart/data';
 import { Link } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
-import { isVideo } from '@/lib/utils';
+import { isVideo, DEFAULT_AVATAR_URL } from '@/lib/utils';
 import { Logo } from '@/components/ui/Logo';
 
 import { useLiveStats } from '@/contexts/LiveStatsContext';
@@ -569,7 +569,7 @@ export const LiveChat: React.FC<LiveChatProps> = ({ showId, showTitle, startTime
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          const name = user ? (user.full_name || user.email?.split('@')[0] || 'Usuario') : guestName;
+          const name = user ? (user.full_name || user.email?.split('@')[0] || 'Anónimo') : guestName;
           await channel.track({
             online_at: new Date().toISOString(),
             user_id: user?.id || 'guest',
@@ -598,7 +598,7 @@ export const LiveChat: React.FC<LiveChatProps> = ({ showId, showTitle, startTime
       return;
     }
 
-    const name = user ? (user.full_name || user.email?.split('@')[0] || 'Usuario') : guestName;
+    const name = user ? (user.full_name || user.email?.split('@')[0] || 'Anónimo') : guestName;
     const messageText = filterMessage(newMessage.trim());
     checkMessageForEmojis(messageText); // Trigger local effect for immediate feedback
     const role = user?.role || 'user';
@@ -747,7 +747,7 @@ export const LiveChat: React.FC<LiveChatProps> = ({ showId, showTitle, startTime
 
   return (
     <div 
-      className="flex flex-col h-full bg-transparent backdrop-blur-3xl rounded-[2.5rem] border border-black/10 dark:border-white/10 overflow-hidden relative overscroll-none transition-all duration-500 shadow-sm"
+      className="flex flex-col h-full bg-transparent backdrop-blur-3xl rounded-[2.5rem] border border-black/10 dark:border-white/10 overflow-hidden relative overscroll-none transition-colors duration-500 shadow-sm"
       role="log"
       aria-label="Chat en vivo"
     >
@@ -1011,11 +1011,11 @@ export const LiveChat: React.FC<LiveChatProps> = ({ showId, showTitle, startTime
                 >
                   <div className="size-6 rounded-full overflow-hidden bg-slate-200 dark:bg-white/10 shrink-0 border border-black/5 dark:border-white/10">
                     <img 
-                      src={msg.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.user_name)}&background=random`} 
-                      alt={msg.user_name} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.user_name)}&background=random`;
+src={msg.profiles?.avatar_url || DEFAULT_AVATAR_URL} 
+                                      alt={msg.user_name} 
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                        e.currentTarget.src = DEFAULT_AVATAR_URL;
                       }}
                     />
                   </div>

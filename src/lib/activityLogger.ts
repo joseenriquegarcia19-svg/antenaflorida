@@ -69,6 +69,7 @@ export type ActionType =
   | 'Editar Ubicación'
   | 'Crear Ubicación'
   | 'Eliminar Ubicación'
+  | 'Transmisión temporal'
   | 'Error de Sistema'
   | 'Error de Autenticación'
   | 'Error al Guardar'

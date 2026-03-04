@@ -5,6 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Nombre a mostrar para comentarios/mensajes: full_name, parte del email o "Anónimo". Nunca "Usuario". */
+export function getDisplayName(profile: { full_name?: string | null; email?: string | null } | null | undefined): string {
+  if (!profile) return 'Anónimo';
+  const name = profile.full_name?.trim();
+  if (name) return name;
+  const email = profile.email?.trim();
+  if (email) return email.includes('@') ? email.split('@')[0] : email;
+  return 'Anónimo';
+}
+
 export function getYoutubeId(url: string): string | null {
   if (!url) return null;
   
@@ -71,6 +81,75 @@ export function embedVideoLinksInHtml(html: string): string {
       return match;
     }
   );
+  
+  // 4.5. Reemplazar iframes directos (ya sea de Apple u otros) o limpiarlos si ya vienen como iframes válidos
+  // Apple Newsroom u otros que pones directamente el iframe
+  processedHtml = processedHtml.replace(
+    /&lt;iframe\s+src=["'](https:\/\/share\.newsroom\.apple[a-zA-Z0-9_/?=&.-]+)["'][^>]*&gt;&lt;\/iframe&gt;/gi,
+    (match, url) => {
+      return `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><iframe src="${url}" class="w-full h-full border-0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+    }
+  );
+  
+  // Si pusiste el iframe directamente como html y no escapado
+  processedHtml = processedHtml.replace(
+    /<iframe\s+src=["'](https:\/\/share\.newsroom\.apple[a-zA-Z0-9_/?=&.-]+)["'][^>]*><\/iframe>/gi,
+    (match, url) => {
+      return `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><iframe src="${url}" class="w-full h-full border-0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+    }
+  );
+
+  // 4.6. Enlaces crudos o en tag A de Apple Newsroom
+  processedHtml = processedHtml.replace(
+    /(?:<a[^>]*href=["']|)(https:\/\/(?:www\.)?apple\.com\/newsroom\/[0-9/]+\/[a-zA-Z0-9_-]+\/\?videoid=([a-zA-Z0-9]+))(?:["'][^>]*>.*?<\/a>|)/gi,
+    (match, fullUrl, videoId) => {
+      const embedUrl = `https://share.newsroom.apple/newsroom/embed/videos/?embedvideoid=${videoId}`;
+      return `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><iframe src="${embedUrl}" class="w-full h-full border-0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+    }
+  );
+
+  // 5. Reemplazar enlaces de X / Twitter (status o pic.x.com) en formato <a>
+  processedHtml = processedHtml.replace(
+    /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/(?:[^/]+\/status\/[0-9]+|[^"']+)|https?:\/\/pic\.x\.com\/[^"']+)["'][^>]*>.*?<\/a>/gi,
+    (match, url) => {
+      return `<div class="flex justify-center w-full my-6"><blockquote class="twitter-tweet" data-theme="dark"><a href="${url}"></a></blockquote></div>`;
+    }
+  );
+
+  // 6. Enlaces crudos de X / Twitter
+  processedHtml = processedHtml.replace(
+    /(?:^|\s|<p>|<br>)(https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/(?:[^/]+\/status\/[0-9]+)|https?:\/\/pic\.x\.com\/[a-zA-Z0-9_]+)(?:$|\s|<\/p>|<br>)/gi,
+    (match, url) => {
+      const replacement = `<div class="flex justify-center w-full my-6"><blockquote class="twitter-tweet" data-theme="dark"><a href="${url}"></a></blockquote></div>`;
+      return match.replace(url, replacement);
+    }
+  );
+
+  // 7. Enlaces de pic.x.com sin http
+  processedHtml = processedHtml.replace(
+    /(?:^|\s|<p>|<br>)(pic\.x\.com\/[a-zA-Z0-9_]+)(?:$|\s|<\/p>|<br>)/gi,
+    (match, url) => {
+      const replacement = `<div class="flex justify-center w-full my-6"><blockquote class="twitter-tweet" data-theme="dark"><a href="https://${url}"></a></blockquote></div>`;
+      return match.replace(url, replacement);
+    }
+  );
+
+  // 8. Reemplazar enlaces a archivos de video directos (.mp4, .webm, .ogg) en formato <a>
+  processedHtml = processedHtml.replace(
+    /<a[^>]*href=["'](https?:\/\/[^\s"'<>]+\.(?:mp4|webm|ogg)(?:[?#][^\s"']*)?)["'][^>]*>.*?<\/a>/gi,
+    (match, url) => {
+      return `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><video src="${url}" controls class="w-full h-full object-cover" preload="metadata"></video></div>`;
+    }
+  );
+
+  // 9. Enlaces crudos a archivos de video directos
+  processedHtml = processedHtml.replace(
+    /(?:^|\s|<p>|<br>)(https?:\/\/[^\s"'<>]+\.(?:mp4|webm|ogg)(?:[?#][^\s"']*)?)(?:$|\s|<\/p>|<br>)/gi,
+    (match, url) => {
+      const replacement = `<div class="aspect-video w-full max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg my-6"><video src="${url}" controls class="w-full h-full object-cover" preload="metadata"></video></div>`;
+      return match.replace(url, replacement);
+    }
+  );
 
   return processedHtml;
 }
@@ -93,6 +172,133 @@ export function getYoutubeThumbnail(url: string): string | null {
   if (!id) return null;
   return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
 }
+
+/** Avatar por defecto cuando el usuario no tiene imagen de perfil: antena de radio (hasta que suba la suya). */
+export const DEFAULT_AVATAR_URL = '/avatar-antenna.svg';
+
+/** Avatares extra para galería: radio, USA, Cuba, animales, Disney, libertad, paz, Avatar (película), Harry Potter (DiceBear 7.x). */
+export const EXTRA_AVATARS_GALLERY = [
+  // Radio
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Radio',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Antenna',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=DJ',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Broadcast',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Microphone',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Studio',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Wave',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=FM',
+  // USA
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=America',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Eagle',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Liberty',
+  // Cuba
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Cuba',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Havana',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=Caribbean',
+  // Animales
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Cat',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Dog',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Lion',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Fox',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=Bear',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Bird',
+  // Disney
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Disney',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Magic',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=Prince',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Princess',
+  // Libertad
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Libertad',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Freedom',
+  // Paz
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Paz',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Peace',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=Dove',
+  // Película Avatar
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Avatar',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Neytiri',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=Pandora',
+  // Harry Potter
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=HarryPotter',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Hogwarts',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=Wizard',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Hermione',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Owl',
+  // Más variedad
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Star',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Moon',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=Sun',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Ocean',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Robot',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Hero',
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Dream',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=Joy',
+  // Banderas reales de países visitantes (FlagCDN, mismos países detectados en la web)
+  'https://flagcdn.com/w160/us.png',
+  'https://flagcdn.com/w160/cu.png',
+  'https://flagcdn.com/w160/es.png',
+  'https://flagcdn.com/w160/mx.png',
+  'https://flagcdn.com/w160/ar.png',
+  'https://flagcdn.com/w160/co.png',
+  'https://flagcdn.com/w160/ve.png',
+  'https://flagcdn.com/w160/pe.png',
+  'https://flagcdn.com/w160/ec.png',
+  'https://flagcdn.com/w160/cl.png',
+  'https://flagcdn.com/w160/do.png',
+  'https://flagcdn.com/w160/pr.png',
+  'https://flagcdn.com/w160/pa.png',
+  'https://flagcdn.com/w160/cr.png',
+  'https://flagcdn.com/w160/gt.png',
+  'https://flagcdn.com/w160/hn.png',
+  'https://flagcdn.com/w160/ni.png',
+  'https://flagcdn.com/w160/sv.png',
+  'https://flagcdn.com/w160/bo.png',
+  'https://flagcdn.com/w160/uy.png',
+  'https://flagcdn.com/w160/py.png',
+  'https://flagcdn.com/w160/ca.png',
+  'https://flagcdn.com/w160/br.png',
+  'https://flagcdn.com/w160/gb.png',
+  'https://flagcdn.com/w160/fr.png',
+  'https://flagcdn.com/w160/de.png',
+  'https://flagcdn.com/w160/it.png',
+  'https://flagcdn.com/w160/ie.png',
+  'https://flagcdn.com/w160/au.png',
+  'https://flagcdn.com/w160/in.png',
+  'https://flagcdn.com/w160/nl.png',
+  'https://flagcdn.com/w160/tr.png',
+  'https://flagcdn.com/w160/se.png',
+  'https://flagcdn.com/w160/pk.png',
+];
+
+/** Lista base de avatares predeterminados (antes de la galería extra). */
+const AVATAR_GALLERY_BASE = [
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Precious',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Buddy',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Caleb',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Lolia',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Milo',
+  'https://api.dicebear.com/7.x/shapes/svg?seed=Circle',
+  'https://api.dicebear.com/7.x/shapes/svg?seed=Triangle',
+  'https://api.dicebear.com/7.x/shapes/svg?seed=Square',
+  'https://api.dicebear.com/7.x/shapes/svg?seed=Polygon',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Willow',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Nala',
+  'https://api.dicebear.com/7.x/micah/svg?seed=Oliver',
+  'https://api.dicebear.com/7.x/micah/svg?seed=George',
+  'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Fun',
+  'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Smile',
+  'https://api.dicebear.com/7.x/thumbs/svg?seed=Thumbs',
+  'https://api.dicebear.com/7.x/thumbs/svg?seed=Up',
+];
+
+/** Todas las URLs de avatares de la galería (base + extra). */
+export const ALL_AVATARS_GALLERY = [...AVATAR_GALLERY_BASE, ...EXTRA_AVATARS_GALLERY];
+
+/** Número total de avatares en la galería. */
+export const AVATAR_GALLERY_TOTAL = ALL_AVATARS_GALLERY.length;
 
 export const DEFAULT_IMAGES = {
   LOGO: '/logo.jpg',
@@ -121,7 +327,7 @@ export function getValidImageUrl(url: string | null | undefined, type: 'logo' | 
     case 'logo':
       return DEFAULT_IMAGES.LOGO;
     case 'avatar':
-      return DEFAULT_IMAGES.AVATAR(name);
+      return DEFAULT_AVATAR_URL;
     case 'news':
       return DEFAULT_IMAGES.NEWS_FALLBACK;
     case 'show':

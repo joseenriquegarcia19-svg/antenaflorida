@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface AdminModalProps {
@@ -18,7 +19,7 @@ export function AdminModal({
   children, 
   footer,
   maxWidth = 'max-w-2xl',
-  zIndex = 100
+  zIndex = 9999
 }: AdminModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -33,13 +34,22 @@ export function AdminModal({
 
   if (!isOpen) return null;
 
-  return (
+  const modal = (
     <div 
-      className="fixed inset-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 flex items-center justify-center p-4 animate-in fade-in duration-200"
       style={{ zIndex }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
     >
+      {/* Backdrop: cubre toda la ventana (viewport) con blur completo para que nada quede sin blur */}
       <div 
-        className={`bg-white dark:bg-card-dark w-full ${maxWidth} max-h-[90vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200`}
+        className="absolute inset-0 bg-black/60 backdrop-blur-xl"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div 
+        className={`relative z-10 bg-white dark:bg-card-dark w-full ${maxWidth} max-h-[90vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -67,12 +77,8 @@ export function AdminModal({
           </div>
         )}
       </div>
-      
-      {/* Background click to close */}
-      <div 
-        className="absolute inset-0 -z-10"
-        onClick={onClose}
-      />
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

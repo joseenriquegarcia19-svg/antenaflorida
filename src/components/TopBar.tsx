@@ -7,6 +7,7 @@ import { useScheduleTimeline } from '@/hooks/useScheduleTimeline';
 import { Clock, Radio, Mic, Newspaper, MapPin, Users, MonitorPlay, Terminal, Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind, MessageSquare } from 'lucide-react';
 import { useLiveStats } from '@/contexts/LiveStatsContext';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 
 interface TickerItem {
   id: string;
@@ -39,11 +40,60 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch content helpers
+  // Fetch content helpers — supports values from admin appearance (news_ticker, podcasts, time, weather, live, stations, shows)
   const fetchContent = async (types: string[] | undefined, mode: string = 'sequence'): Promise<TickerItem[]> => {
     if (!types || types.length === 0) return [];
     
     const allItems: TickerItem[] = [];
+    const hasNews = types.some(t => t === 'news_ticker' || t === 'news');
+    const hasPodcasts = types.includes('podcasts');
+    const hasShows = types.includes('shows');
+
+    // Noticias (ticker): fetch latest news
+    if (hasNews) {
+      try {
+        const { data: newsData } = await supabase
+          .from('news')
+          .select('id, title, slug')
+          .order('created_at', { ascending: false })
+          .limit(8);
+        if (newsData?.length) {
+          newsData.forEach(n => {
+            allItems.push({
+              id: n.id,
+              text: n.title,
+              link: `/noticias/${n.slug || n.id}`,
+              type: 'news',
+            });
+          });
+        }
+      } catch (err) {
+        console.error('[TopBar] Error fetching news:', err);
+      }
+    }
+
+    // Podcasts: fetch latest podcasts
+    if (hasPodcasts) {
+      try {
+        const { data: podcastData } = await supabase
+          .from('podcasts')
+          .select('id, title, slug')
+          .order('created_at', { ascending: false })
+          .limit(8);
+        if (podcastData?.length) {
+          podcastData.forEach(p => {
+            allItems.push({
+              id: p.id,
+              text: p.title,
+              link: `/podcasts/${p.slug || p.id}`,
+              type: 'podcast',
+            });
+          });
+        }
+      } catch (err) {
+        console.error('[TopBar] Error fetching podcasts:', err);
+      }
+    }
 
     // If 'time' is selected, add a special item for it
     if (types.includes('time')) {
@@ -55,13 +105,9 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
       allItems.push({ id: 'weather-widget', text: 'Weather', type: 'weather' });
     }
 
+    // Live / Stations / Shows: use current program from schedule
     try {
-      if (types.includes('live') || types.includes('stations')) {
-        // Use currentShow from useScheduleTimeline (passed through context ideally, but we have the hook here)
-        // Since this fetchContent is called inside TopBar which uses the hook, 
-        // we can just use the value from the closure or assume it's updated.
-        // Actually, fetchContent is an async function inside the component.
-        
+      if (types.includes('live') || types.includes('stations') || hasShows) {
         if (currentShow) {
           allItems.push({ 
             id: 'live-show', 
@@ -86,8 +132,13 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
   useEffect(() => {
     if (!config?.top_bar_enabled) return;
 
-    fetchContent(config.top_bar_left_items, config.top_bar_left_mode).then(setLeftItems);
-    fetchContent(config.top_bar_right_items, config.top_bar_right_mode).then(setRightItems);
+    const leftTypes = config.top_bar_left_items ?? ['news_ticker'];
+    const rightTypes = config.top_bar_right_items ?? ['live'];
+    const leftMode = config.top_bar_left_mode ?? 'sequence';
+    const rightMode = config.top_bar_right_mode ?? 'sequence';
+
+    fetchContent(leftTypes, leftMode).then(setLeftItems);
+    fetchContent(rightTypes, rightMode).then(setRightItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config?.top_bar_enabled, config?.top_bar_left_items, config?.top_bar_left_mode, config?.top_bar_right_items, config?.top_bar_right_mode, currentShow?.id]);
 
@@ -138,13 +189,13 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
 
     if (item.type === 'time') {
       return (
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-fade-in text-slate-800 dark:text-white">
-          <Clock size={12} className="text-slate-600 dark:text-white/80" />
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-fade-in text-white">
+          <Clock size={12} className="text-white/90" />
           <span>
             {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: !is24h })}
           </span>
           <span 
-            className="hidden sm:inline border-l border-slate-300 dark:border-white/20 pl-2 ml-1"
+            className="hidden sm:inline border-l border-white/30 pl-2 ml-1"
           >
             {time.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}
           </span>
@@ -154,22 +205,22 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
 
     if (item.type === 'weather') {
       return (
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-fade-in text-slate-800 dark:text-white">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-fade-in text-white">
           {locationName && (
-            <div className="flex items-center gap-1 opacity-80">
+            <div className="flex items-center gap-1 opacity-90">
               <MapPin size={12} />
               <span>{locationName}</span>
             </div>
           )}
           {weather && (
             <div 
-              className="flex items-center gap-1 text-slate-800 dark:text-yellow-400 cursor-pointer hover:text-primary dark:hover:text-yellow-300 transition-colors"
+              className="flex items-center gap-1 text-white cursor-pointer hover:opacity-90 transition-colors"
               onClick={toggleUnit}
               title="Cambiar unidad C°/F°"
             >
               {getWeatherIconComponent("w-3.5 h-3.5", 2.5)}
               <span>{getDisplayTemp(weather.temp)}°{unit}</span>
-              <span className="opacity-70 dark:opacity-40 hidden md:inline">{weather.desc}</span>
+              <span className="opacity-80 hidden md:inline">{weather.desc}</span>
             </div>
           )}
         </div>
@@ -195,7 +246,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
     return (
       <div className="flex items-center gap-2 overflow-hidden relative group">
         <span 
-          className="text-[10px] bg-slate-200/80 dark:bg-black/40 text-slate-800 dark:text-white px-2 py-0.5 rounded-full font-black uppercase flex items-center gap-1 flex-shrink-0 z-10 shadow-sm"
+          className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-black uppercase flex items-center gap-1 flex-shrink-0 z-10 shadow-sm"
         >
           {item.type === 'live' ? (
             <span className="relative flex h-2 w-2">
@@ -215,7 +266,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
         <div className="relative overflow-hidden flex-1 min-w-0">
           <a 
             href={item.link} 
-            className="text-xs font-bold text-slate-800 dark:text-white hover:text-primary dark:hover:text-primary transition-colors whitespace-nowrap block pr-8 topbar-ticker-link"
+            className="text-xs font-bold text-white hover:text-white/90 transition-colors whitespace-nowrap block pr-8 topbar-ticker-link"
           >
             {displayText}
           </a>
@@ -236,15 +287,15 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
         }
       `}</style>
       <div 
-        className={`relative w-full z-[60] h-8 flex items-center justify-between px-4 sm:px-6 topbar-container transition-all duration-300 ${
+        className={`relative w-full z-[60] h-8 flex items-center justify-center topbar-container transition-all duration-300 ${
           isTransparent 
             ? 'bg-transparent text-slate-700 dark:text-white' 
             : 'bg-primary/95 backdrop-blur-xl text-white'
         }`}
       >
-      
-      <div className="flex-1 overflow-hidden flex items-center relative z-10 py-1">
-        <div className="flex items-center backdrop-blur-md rounded-full px-3 py-0.5 bg-slate-200/50 dark:bg-black/40 shadow-sm max-w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex items-center justify-between relative z-10 py-1">
+      <div className="flex-1 overflow-hidden flex items-center min-w-0">
+        <div className="flex items-center backdrop-blur-md rounded-full px-3 py-0.5 bg-primary shadow-sm max-w-full text-white">
           {renderContent(leftItems, leftIndex)}
         </div>
       </div>
@@ -252,7 +303,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
       <div 
         className="flex-shrink-0 flex items-center gap-4 py-1 ml-2"
       >
-        <div className="flex items-center gap-4 backdrop-blur-md rounded-full px-3 py-0.5 bg-slate-200/50 dark:bg-black/40 shadow-sm">
+        <div className="flex items-center gap-4 backdrop-blur-md rounded-full px-3 py-0.5 bg-primary shadow-sm text-white">
           {/* Live Stats Section */}
           <div className="hidden lg:flex items-center gap-3 pr-4 mr-2">
              <div className="flex items-center gap-1.5" title={`${listenerCount} oyentes en vivo`}>
@@ -260,17 +311,17 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </div>
-                <span className="text-[10px] font-black uppercase whitespace-nowrap text-slate-700 dark:text-white">{listenerCount} Oyentes</span>
+                <span className="text-[10px] font-black uppercase whitespace-nowrap text-white">{listenerCount} Oyentes</span>
              </div>
              
              <div className="flex items-center gap-1.5 opacity-80" title={`${onlineCount} personas navegando`}>
-                <Users size={12} className="text-slate-600 dark:text-white" />
-                <span className="text-[10px] font-bold uppercase whitespace-nowrap text-slate-700 dark:text-white">{onlineCount} En Línea</span>
+                <Users size={12} className="text-white" />
+                <span className="text-[10px] font-bold uppercase whitespace-nowrap text-white">{onlineCount} En Línea</span>
              </div>
 
-             <Link to="/chat" className="flex items-center gap-1.5 hover:text-primary transition-colors" title={`${chatMessageCount} mensajes en el chat`}>
-                <MessageSquare size={12} className="text-slate-600 dark:text-white" />
-                <span className="text-[10px] font-bold uppercase whitespace-nowrap text-slate-700 dark:text-white">{chatMessageCount} Chat</span>
+             <Link to="/chat" className="flex items-center gap-1.5 text-white hover:opacity-90 transition-colors" title={`${chatMessageCount} mensajes en el chat`}>
+                <MessageSquare size={12} className="text-white" />
+                <span className="text-[10px] font-bold uppercase whitespace-nowrap text-white">{chatMessageCount} Chat</span>
              </Link>
           </div>
 
@@ -279,14 +330,14 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
           ) : (
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider animate-slide-in-right">
               {locationName && (
-                <div className="flex items-center gap-1 text-slate-700 dark:text-white/90">
-                  <MapPin size={12} className="text-slate-500 dark:text-white" />
+                <div className="flex items-center gap-1 text-white/90">
+                  <MapPin size={12} className="text-white" />
                   <span>{locationName}</span>
                 </div>
               )}
               {weather && (
                 <div 
-                  className="flex items-center gap-1.5 text-slate-800 dark:text-white cursor-pointer hover:text-primary transition-colors bg-slate-200/50 dark:bg-black/40 px-2 py-0.5 rounded-full"
+                  className="flex items-center gap-1.5 text-white cursor-pointer hover:opacity-90 transition-colors bg-primary px-2 py-0.5 rounded-full"
                   onClick={toggleUnit}
                   title="Cambiar unidad C°/F°"
                 >
@@ -298,6 +349,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isTransparent }) => {
             </div>
           )}
         </div>
+      </div>
       </div>
       </div>
     </>

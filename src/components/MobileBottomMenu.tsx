@@ -105,7 +105,7 @@ export const MobileBottomMenu: React.FC<MobileBottomMenuProps> = () => {
   return (
     <>
       {/* Bottom Navigation Bar */}
-      <div className="xl:hidden fixed bottom-0 left-0 right-0 h-[calc(64px+env(safe-area-inset-bottom))] bg-white/80 dark:bg-card-dark/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/10 z-[150] flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgb(0,0,0,0.15)] transition-all duration-300">
+      <div className="xl:hidden fixed bottom-0 left-0 right-0 h-[calc(64px+env(safe-area-inset-bottom))] bg-white/80 dark:bg-card-dark/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/10 z-[150] flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgb(0,0,0,0.15)] transition-colors duration-300">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeItem === item.id;

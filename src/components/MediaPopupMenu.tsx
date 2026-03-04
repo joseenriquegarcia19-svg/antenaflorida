@@ -36,7 +36,7 @@ export const MediaPopupMenu: React.FC<MediaPopupMenuProps> = ({ isOpen, onClose,
       />
       <div
         style={style}
-        className={`z-[200] bg-black/50 backdrop-blur-lg border border-white/10 rounded-2xl p-2 transition-all duration-300 ease-in-out ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}
+        className={`z-[200] bg-black/50 backdrop-blur-lg border border-white/10 rounded-2xl p-2 transition-colors duration-300 ease-in-out ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}
       >
         <div className="flex gap-2">
           {menuItems.map((item) => {

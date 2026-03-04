@@ -22,6 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { SEO } from '../components/SEO';
 import { generateStationSchema } from '@/lib/metadata';
 import { useSiteConfig } from '@/contexts/SiteConfigContext';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export default function Home() {
   const { config } = useSiteConfig();
@@ -53,17 +54,27 @@ export default function Home() {
         })}
       />
       
-      <Hero />
+      <ErrorBoundary>
+        <Hero />
+      </ErrorBoundary>
       
-      <AudienceMap />
+      <ErrorBoundary>
+        <AudienceMap />
+      </ErrorBoundary>
       
-      <ContentCarousel />
+      <ErrorBoundary>
+        <ContentCarousel />
+      </ErrorBoundary>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
-        <WorldTimeBar />
+        <ErrorBoundary>
+          <WorldTimeBar />
+        </ErrorBoundary>
       </section>
 
-      <FeaturedNewsSection />
+      <ErrorBoundary>
+        <FeaturedNewsSection />
+      </ErrorBoundary>
       
       <section className="max-w-7xl mx-auto px-4 sm:px-6 my-6">
          <div className="w-full">
@@ -71,19 +82,29 @@ export default function Home() {
          </div>
       </section>
 
-      <ReelsSection />
+      <ErrorBoundary>
+        <ReelsSection />
+      </ErrorBoundary>
       
-      <FloridaEventsBanner />
+      <ErrorBoundary>
+        <FloridaEventsBanner />
+      </ErrorBoundary>
 
-      <TeamBanner viewMode="carousel" />
+      <ErrorBoundary>
+        <TeamBanner viewMode="carousel" />
+      </ErrorBoundary>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 my-6 grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12 items-start">
         <div id="news-section" className="lg:col-span-2 flex flex-col">
           <div className="bg-white dark:bg-card-dark rounded-[32px] p-6 sm:p-10 shadow-xl border border-slate-100 dark:border-white/5">
-            <NewsList sidebarRef={sidebarRef} />
+            <ErrorBoundary>
+              <NewsList sidebarRef={sidebarRef} />
+            </ErrorBoundary>
           </div>
           <div className="mt-12">
-             <CategoryCloud />
+             <ErrorBoundary>
+               <CategoryCloud />
+             </ErrorBoundary>
           </div>
         </div>
         <div id="podcasts-section" ref={sidebarRef} className="h-full space-y-6">
@@ -91,35 +112,49 @@ export default function Home() {
           
           {widgetSettings && widgetSettings.widget_tags_enabled !== 'false' && (
             <div>
-              <PopularTagsCloud />
+              <ErrorBoundary>
+                <PopularTagsCloud />
+              </ErrorBoundary>
             </div>
           )}
 
           {widgetSettings && widgetSettings.widget_programs_enabled !== 'false' && (
-            <ProgramWidget 
-              autoPlayInterval={8000}
-              showControls={true}
-              forceShowAll={widgetSettings.widget_programs_show_all === 'true'}
-            />
+            <ErrorBoundary>
+              <ProgramWidget 
+                autoPlayInterval={8000}
+                showControls={true}
+                forceShowAll={widgetSettings.widget_programs_show_all === 'true'}
+              />
+            </ErrorBoundary>
           )}
 
           {widgetSettings && widgetSettings.widget_weather_enabled !== 'false' && (
-            <WeatherWidget />
+            <ErrorBoundary>
+              <WeatherWidget />
+            </ErrorBoundary>
           )}
 
-          <TopNewsWidget />
+          <ErrorBoundary>
+            <TopNewsWidget />
+          </ErrorBoundary>
 
           {widgetSettings && widgetSettings.widget_schedule_enabled !== 'false' && (
-            <DailyScheduleWidget />
+            <ErrorBoundary>
+              <DailyScheduleWidget />
+            </ErrorBoundary>
           )}
 
           {widgetSettings && widgetSettings.widget_podcasts_enabled !== 'false' && (
-            <PodcastList />
+            <ErrorBoundary>
+              <PodcastList />
+            </ErrorBoundary>
           )}
         </div>
       </section>
 
-      <YouTubeSection />
+      <ErrorBoundary>
+        <YouTubeSection />
+      </ErrorBoundary>
       
       <section className="max-w-7xl mx-auto px-4 sm:px-6 my-6">
          <div className="w-full">
@@ -127,7 +162,9 @@ export default function Home() {
          </div>
       </section>
 
-      <SponsorsSection />
+      <ErrorBoundary>
+        <SponsorsSection />
+      </ErrorBoundary>
     </>
   );
 }

@@ -1,5 +1,5 @@
 :root {
-  --background: 242 242 243; /* #f2f2f3 */
+  --background: 243 243 237; /* #F3F3ED - mismo que la barra de navegación */
   --foreground: 15 23 42; /* slate-900 */
   --card: 255 255 255;
   --border: 226 232 240; /* slate-200 */
@@ -363,6 +363,8 @@
 .ql-editor {
   @apply text-slate-700 dark:text-white/80 leading-relaxed font-sans;
   font-size: 1.125rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .news-content p,
@@ -421,10 +423,64 @@ h1 {
 
 .news-content a {
   @apply text-primary font-bold underline decoration-2 underline-offset-4 hover:opacity-80 transition-all;
+  word-break: break-all;
 }
 
 .news-content blockquote {
   @apply border-l-4 border-primary pl-6 py-2 italic text-slate-600 dark:text-white/60 my-10 bg-slate-50 dark:bg-white/5 rounded-r-xl;
+}
+
+/* Fix React Quill Video and Tooltip visibility */
+.ql-editor iframe.ql-video {
+  width: 100% !important;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  margin: 1.5rem 0;
+  border: none;
+  background-color: rgba(0,0,0,0.1);
+}
+
+.ql-container {
+  font-family: inherit !important;
+}
+
+.ql-editor {
+  min-height: 300px;
+}
+
+.ql-snow .ql-tooltip {
+  position: absolute !important;
+  z-index: 9999 !important;
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 10px 16px !important;
+  color: #0f172a !important;
+}
+
+.ql-snow .ql-tooltip input[type=text] {
+  width: 250px !important;
+}
+
+.ql-snow .ql-tooltip a.ql-action::after {
+  content: 'Guardar' !important;
+  margin-left: 8px !important;
+}
+
+.ql-snow .ql-tooltip a.ql-remove::before {
+  content: 'Remover' !important;
+  margin-left: 8px !important;
+}
+
+.dark .ql-snow .ql-tooltip {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark .ql-snow .ql-tooltip input[type="text"] {
+  border-color: #475569 !important;
 }
 
 #root {

@@ -144,7 +144,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
         <div className="p-6 overflow-y-auto custom-scrollbar">
           <div className="mb-6">
             <p className="text-slate-600 dark:text-white/70 leading-relaxed">
-              Hola <span className="font-bold text-primary">{user?.full_name || 'Usuario'}</span>, 
+              Hola <span className="font-bold text-primary">{user?.full_name || user?.email?.split('@')[0] || 'Anónimo'}</span>, 
               {role === 'user' 
                 ? ' ahora eres parte oficial de nuestra radio con una cuenta de usuario.' 
                 : ' tu cuenta ha sido configurada correctamente.'}

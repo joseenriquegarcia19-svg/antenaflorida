@@ -36,7 +36,11 @@ export default function SponsorsPage() {
 
   return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark pt-8 pb-20">
-        <SEO title="Nuestros Patrocinadores" />
+        <SEO
+        title="Nuestros Patrocinadores"
+        description="Conoce a los patrocinadores que apoyan a Antena Florida. Aliados y marcas que hacen posible nuestra programación."
+        keywords="patrocinadores, sponsors, antena florida"
+      />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 animate-fade-in-up">
             <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">
@@ -65,7 +69,7 @@ export default function SponsorsPage() {
                   <img 
                     src={sponsor.logo_url} 
                     alt={sponsor.name} 
-                    className="max-w-full max-h-24 object-contain filter grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-110"
+                    className="max-w-full max-h-24 object-contain filter grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-110 mix-blend-multiply dark:mix-blend-normal dark:brightness-200 dark:contrast-125 group-hover:dark:brightness-100 group-hover:dark:contrast-100"
                   />
                 </a>
               ))}

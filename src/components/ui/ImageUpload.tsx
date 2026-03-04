@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Upload, X, Loader2, Link as LinkIcon, Layout, Move } from 'lucide-react';
+import { Upload, X, Loader2, Link as LinkIcon, Layout, Move, Wand2 } from 'lucide-react';
 import { MediaManipulator, MediaConfig } from './MediaManipulator';
 
 interface ImageUploadProps {
@@ -99,6 +99,81 @@ export function ImageUpload({
     }
   };
 
+  const handleRemoveBackground = async () => {
+    if (!value || !value.match(/\.(jpg|jpeg|png|webp)$/i)) {
+      alert('Solo se puede eliminar el fondo de imágenes.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject(new Error('No canvas context'));
+          
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          
+          // Tolerance for what is considered "white" (0-255)
+          const threshold = 230; 
+          
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+            
+            // If the pixel is very close to white, make it fully transparent
+            if (r > threshold && g > threshold && b > threshold) {
+              data[i+3] = 0; 
+            } 
+            // Simple anti-aliasing for edges
+            else if (r > 200 && g > 200 && b > 200) {
+              const avg = (r + g + b) / 3;
+              // Map 200-255 to 255-0 alpha
+              const alpha = Math.max(0, 255 - ((avg - 200) * (255 / 55)));
+              data[i+3] = alpha;
+            }
+          }
+          
+          ctx.putImageData(imageData, 0, 0);
+          canvas.toBlob((b) => {
+            if (b) resolve(b);
+            else reject(new Error('Error al convertir la imagen'));
+          }, 'image/png');
+        };
+        img.onerror = () => reject(new Error('No se pudo cargar la imagen para procesarla. Intenta subirla de nuevo.'));
+        img.src = value + '?t=' + new Date().getTime(); // bypass cache
+      });
+
+      const fileName = `nobg_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.png`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, blob, { contentType: 'image/png' });
+
+      if (uploadError) throw uploadError;
+      
+      const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+      onChange(data.publicUrl);
+      alert('¡Fondo blanco eliminado con éxito!');
+      
+    } catch (error) {
+      console.error(error);
+      const msg = error instanceof Error ? error.message : 'Error al intentar eliminar el fondo.';
+      alert(msg);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleUrlSubmit = () => {
     if (urlInput.trim()) {
       onChange(urlInput.trim());
@@ -135,6 +210,13 @@ export function ImageUpload({
         } ${
           rounded === 'full' ? 'rounded-full' : 'rounded-lg'
         }`}>
+          {uploading && (
+            <div className="absolute inset-0 bg-black/50 z-20 flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
+              <Loader2 className="animate-spin text-white" size={32} />
+              <span className="text-white text-xs font-bold uppercase tracking-wider">Procesando...</span>
+            </div>
+          )}
+
           {isVideo(value || placeholder || '') ? (
             <video 
               src={value || placeholder} 
@@ -151,12 +233,22 @@ export function ImageUpload({
             />
           )}
 
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 z-10">
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 z-10 flex-wrap p-2 content-center">
+            {value && !isVideo(value) && (
+              <button
+                type="button"
+                onClick={handleRemoveBackground}
+                className="p-2 bg-purple-500/80 hover:bg-purple-600 rounded-full text-white backdrop-blur-sm transition-colors shadow-lg"
+                title="Eliminar Fondo Blanco (Magia)"
+              >
+                <Wand2 size={20} />
+              </button>
+            )}
             {onMediaConfigChange && value && (
               <button
                 type="button"
                 onClick={() => setIsEditing(true)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-all"
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
                 title="Ajustar posición"
               >
                 <Move size={20} />
@@ -165,7 +257,7 @@ export function ImageUpload({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-all"
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
               title="Cambiar imagen"
             >
               <Upload size={20} />
@@ -173,7 +265,7 @@ export function ImageUpload({
             <button
               type="button"
               onClick={() => setShowUrlInput(true)}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-all"
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
               title="Pegar URL"
             >
               <LinkIcon size={20} />
@@ -182,7 +274,7 @@ export function ImageUpload({
               <button
                 type="button"
                 onClick={onGalleryClick}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-all"
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
                 title="Elegir de galería"
               >
                 <Layout size={20} />
@@ -192,7 +284,7 @@ export function ImageUpload({
               <button
                 type="button"
                 onClick={() => onChange('')}
-                className="p-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white backdrop-blur-sm transition-all"
+                className="p-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white backdrop-blur-sm transition-colors"
                 title="Eliminar"
               >
                 <X size={20} />

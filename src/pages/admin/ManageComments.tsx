@@ -4,6 +4,7 @@ import { Trash, MessageSquare, ExternalLink, Calendar, User, Search } from 'luci
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { logActivity } from '@/lib/activityLogger';
+import { getDisplayName } from '@/lib/utils';
 
 interface Comment {
   id: string;
@@ -117,7 +118,7 @@ export default function ManageComments() {
               <div className="flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-widest">
                   <span className="flex items-center gap-1.5 text-primary bg-primary/10 px-2 py-1 rounded">
-                    <User size={14} /> {comment.profiles?.full_name || comment.profiles?.email || 'Usuario'}
+                    <User size={14} /> {getDisplayName(comment.profiles)}
                   </span>
                   <span className="flex items-center gap-1.5 text-slate-400 dark:text-white/40">
                     <Calendar size={14} /> {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}

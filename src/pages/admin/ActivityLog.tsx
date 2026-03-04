@@ -32,6 +32,8 @@ export default function ActivityLog() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [actionTypes, setActionTypes] = useState<string[]>([]);
   const [showErrorsOnly, setShowErrorsOnly] = useState(false);
+  const [filterUserId, setFilterUserId] = useState<string>('');
+  const [userOptions, setUserOptions] = useState<{ id: string; label: string }[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -56,7 +58,20 @@ export default function ActivityLog() {
   // Sync with filters
   useEffect(() => {
     fetchLogs(0);
-  }, [debouncedSearchTerm, filterAction, dateRange, showErrorsOnly]);
+  }, [debouncedSearchTerm, filterAction, dateRange, showErrorsOnly, filterUserId]);
+
+  useEffect(() => {
+    async function loadUsers() {
+      const { data } = await supabase.from('profiles').select('id, full_name, email').order('email');
+      if (data) {
+        setUserOptions(data.map(p => ({
+          id: p.id,
+          label: [p.full_name, p.email].filter(Boolean).join(' — ') || p.id
+        })));
+      }
+    }
+    loadUsers();
+  }, []);
 
   async function fetchActionTypes() {
     try {
@@ -112,6 +127,10 @@ export default function ActivityLog() {
 
       if (dateRange.end) {
         query = query.lte('occurred_at', `${dateRange.end}T23:59:59`);
+      }
+
+      if (filterUserId) {
+        query = query.eq('user_id', filterUserId);
       }
 
       const { data, count, error } = await query
@@ -335,6 +354,7 @@ export default function ActivityLog() {
             onClick={() => {
               setFilterAction('all');
               setShowErrorsOnly(false);
+              setFilterUserId('');
               setSearchTerm('');
               setDateRange({ start: '', end: '' });
             }}
@@ -347,7 +367,23 @@ export default function ActivityLog() {
 
       {/* Filters Card */}
       <div className="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Filter by User */}
+          <div className="relative">
+            <Activity className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <select
+              value={filterUserId}
+              onChange={(e) => setFilterUserId(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:border-primary outline-none transition-all appearance-none"
+              aria-label="Filtrar por usuario"
+              title="Ver todo lo realizado por un usuario"
+            >
+              <option value="">Todos los usuarios</option>
+              {userOptions.map(u => (
+                <option key={u.id} value={u.id}>{u.label}</option>
+              ))}
+            </select>
+          </div>
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

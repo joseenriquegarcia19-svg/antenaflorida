@@ -16,6 +16,7 @@ interface CarouselItem {
 
 export function ContentCarousel() {
   const [items, setItems] = useState<CarouselItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -25,6 +26,8 @@ export function ContentCarousel() {
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      try {
       let carouselConfig: { id: string; type: CarouselItem['type']; title?: string; subtitle?: string; image_url?: string }[] = [];
       
       // Fetch configuration
@@ -249,6 +252,9 @@ export function ContentCarousel() {
       }
 
       setItems(combinedItems);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();
@@ -308,7 +314,31 @@ export function ContentCarousel() {
 
   const currentItem = items[currentIndex];
 
-  if (items.length === 0) return null;
+  // Skeleton mientras carga
+  if (loading) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 my-6 sm:my-8">
+        <div className="relative bg-slate-800/50 rounded-2xl sm:rounded-3xl overflow-hidden border border-white/5 w-full min-h-[280px] sm:min-h-[340px] md:min-h-[400px] flex items-center justify-center">
+          <div className="animate-pulse flex flex-col items-center gap-3">
+            <div className="h-4 w-32 bg-white/10 rounded-full" />
+            <div className="h-6 w-48 sm:w-64 bg-white/10 rounded-full" />
+            <div className="h-3 w-24 bg-white/10 rounded-full" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Placeholder cuando no hay items configurados (así el widget "antes del tiempo" siempre ocupa espacio)
+  if (items.length === 0) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 my-6 sm:my-8">
+        <div className="relative bg-slate-900/80 rounded-2xl sm:rounded-3xl overflow-hidden border border-white/5 w-full min-h-[200px] sm:min-h-[260px] flex items-center justify-center">
+          <p className="text-white/50 text-sm font-medium">Destacados próximamente</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 my-6 sm:my-8">
@@ -447,14 +477,14 @@ export function ContentCarousel() {
           <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 flex gap-2 z-20">
              <button 
                 onClick={prevSlide}
-                className="p-1.5 sm:p-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white hover:text-slate-900 transition-all shadow-lg"
+                className="p-1.5 sm:p-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white hover:text-slate-900 transition-colors shadow-lg"
                 aria-label="Anterior"
              >
                 <ChevronLeft size={16} className="sm:size-[20px]" />
              </button>
              <button 
                 onClick={nextSlide}
-                className="p-1.5 sm:p-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white hover:text-slate-900 transition-all shadow-lg"
+                className="p-1.5 sm:p-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white hover:text-slate-900 transition-colors shadow-lg"
                 aria-label="Siguiente"
              >
                 <ChevronRight size={16} className="sm:size-[20px]" />
